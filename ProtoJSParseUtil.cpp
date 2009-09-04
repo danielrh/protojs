@@ -82,8 +82,6 @@ void  initNameSpace(pProtoJSParser ctx, SCOPE_TYPE(NameSpace) symtab) {
         symtab->externalNamespace=stringDup(lowerNamespace->externalNamespace);
         if (lowerNamespace->package)
             symtab->package=stringDup(lowerNamespace->package);
-        if (lowerNamespace->packageJS)
-            symtab->packageJS=stringDup(lowerNamespace->packageJS);
     }
     if (true) {
         char lst='.';
@@ -120,7 +118,26 @@ void  initSymbolTable(SCOPE_TYPE(Symbols) symtab, pANTLR3_STRING messageName, in
     }
     symtab->free = freeSymbolTable;
 }
-
+pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id){
+    char * where=(char*)id->chars;
+    char *whereEnd=(char*)id->chars;
+    std::string retval;
+    do {
+        whereEnd=(whereEnd!=NULL&&whereEnd[0]!='\0')?strchr(whereEnd+1,'.'):NULL;
+        std::string package=std::string(where,whereEnd?whereEnd-where:id->len);
+        retval+='!';
+        retval+=package;
+        retval+="&&";
+        retval+=package;
+        retval+=" = {};\n";
+    }while (whereEnd);
+    {
+        pANTLR3_STRING sretval=id->factory->newPtr(id->factory,(pANTLR3_UINT8)retval.data(),retval.length());
+        id->setS(id,sretval);
+        stringFree(sretval);
+    }
+    return id;
+}
 void  definePackage(pProtoJSParser ctx, pANTLR3_STRING id) {    
     if (id==NULL) {
         if (SCOPE_TOP(NameSpace)->externalNamespace&&SCOPE_TOP(NameSpace)->externalNamespace->len) {

@@ -50,7 +50,6 @@ scope NameSpace {
     pANTLR3_STRING externalNamespace;
     pANTLR3_STRING internalNamespace;
     pANTLR3_STRING package;
-    pANTLR3_STRING packageJS;
     pANTLR3_LIST imports;
 }
 
@@ -88,18 +87,24 @@ protoroot
     @init {
         initNameSpace(ctx,SCOPE_TOP(NameSpace));
     }
-	:	(importrule|message)* (package (importrule|message)*)?
+	:	importrule* (package importrule*)? message*
     {
     }
 	;
 
 package
-   :   ( PACKAGELITERAL QUALIFIEDIDENTIFIER ITEM_TERMINATOR -> PACKAGELITERAL WS[" "] QUALIFIEDIDENTIFIER QUALIFIEDIDENTIFIER["."] QUALIFIEDIDENTIFIER[SCOPE_TOP(NameSpace)->externalNamespace->chars] QUALIFIEDIDENTIFIER[SCOPE_TOP(NameSpace)->internalNamespace->chars] ITEM_TERMINATOR WS["\n"])
+    
+    : ( PACKAGELITERAL packagename ITEM_TERMINATOR -> IDENTIFIER[jsPackageDefine($packagename.text)->chars])
         {
-            definePackage( ctx, $QUALIFIEDIDENTIFIER.text );
+            definePackage( ctx, $NameSpace::package );
+
         }
 	;
-
+packagename : QUALIFIEDIDENTIFIER 
+    {
+            $NameSpace::package=stringDup($QUALIFIEDIDENTIFIER.text);
+    }
+    ;
 importrule
    :   ( IMPORTLITERAL STRING_LITERAL ITEM_TERMINATOR -> IMPORTLITERAL WS[" "] STRING_LITERAL ITEM_TERMINATOR WS["\n"] )
         {
@@ -415,7 +420,6 @@ PACKAGELITERAL :    'package';
 IMPORTLITERAL :     'import';
 
 DOT :  '.';
-
 // Message elements
 MESSAGE	:	'message';
 EXTEND	:	'extend';
