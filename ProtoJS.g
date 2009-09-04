@@ -266,18 +266,19 @@ field
     }
     @init {$field::defaultValue=NULL; $field::isNumericType=0;}
     :
-     (( (ProtoJSOPTIONAL (multiplicitive_type|field_type) field_name EQUALS field_offset default_value? ITEM_TERMINATOR )  -> WS["\t"] ProtoJSOPTIONAL WS[" "] multiplicitive_type field_type WS[" "] field_name WS[" "] EQUALS WS[" "] field_offset WS[" "] default_value ITEM_TERMINATOR WS["\n"] )
-      | 
-      ( ( (REQUIRED|REPEATED) (multiplicitive_type|field_type) field_name EQUALS field_offset ITEM_TERMINATOR )  
-          -> WS["\t"] REQUIRED REPEATED WS[" "] multiplicitive_type field_type WS[" "] field_name WS[" "] EQUALS WS[" "] field_offset ITEM_TERMINATOR WS["\n"] ) )
-    {
+      ( ( (ProtoJSOPTIONAL|REQUIRED|REPEATED) (multiplicitive_type|field_type) field_name EQUALS field_offset (default_value|none) ITEM_TERMINATOR )  
+       -> WS["\t"] field_name COLON[":"] WS[" "] BLOCK_OPEN["{"] WS["\n\t\t"] IDENTIFIERCOLON["default_value:"] WS[" "] default_value none COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["multiplicity:"] WS[" "] QUALIFIEDIDENTIFIER["PROTO."] ProtoJSOPTIONAL REQUIRED REPEATED COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["type:"] WS[" "] IDENTIFIER["function"] PAREN_OPEN["("]PAREN_CLOSE[")"] BLOCK_OPEN["{"] IDENTIFIER["return"] WS[" "] multiplicitive_type field_type ITEM_TERMINATOR[";"] BLOCK_CLOSE["}"] COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["id:"] WS[" "] field_offset WS["\n\t"] BLOCK_CLOSE["}"] COMMA[","] WS["\n"])
+    { 
+        if (($REQUIRED||$REPEATED)&&$field::defaultValue&&$field::defaultValue->len) {
+           fprintf(stderr,"ERROR on line BLEH: default not allowed for repeated or optional elements in field \%s : \%s\n",$field::fieldName->chars,$field::defaultValue->chars);
+        }
         defineField(ctx, $field::fieldType,$field::fieldName,$field::defaultValue,$field::fieldOffset,$REPEATED==NULL,$REQUIRED!=NULL,0);
         stringFree($field::fieldName);
         stringFree($field::fieldType);
         stringFree($field::defaultValue);
     }
 	;
-
+none : (DOT?)->IDENTIFIER["None"] ;
 field_offset
     : integer
     {
@@ -344,11 +345,16 @@ array_spec
 	;
 
 default_value
-	:	SQBRACKET_OPEN DEFAULT EQUALS literal_value SQBRACKET_CLOSE
+	:	(SQBRACKET_OPEN DEFAULT EQUALS default_literal_value SQBRACKET_CLOSE -> STRING_LITERAL[$default_literal_value.text->setS($default_literal_value.text,$field::defaultValue)])
     {
-        $field::defaultValue=defaultValuePreprocess(ctx, $field::fieldType, $literal_value.text);
+
     }
 	;
+default_literal_value : literal_value
+  {
+        $field::defaultValue=defaultValuePreprocess(ctx, $field::fieldType, $literal_value.text);
+  }
+  ;
 
 numeric_type:		UINT32
 	|	INT32
@@ -580,6 +586,8 @@ IDENTIFIER : ('a'..'z' |'A'..'Z' |'_' ) ('a'..'z' |'A'..'Z' |'_' |'0'..'9' )* ;
 
 QUALIFIEDIDENTIFIER : ('a'..'z' |'A'..'Z' |'_' ) ('a'..'z' |'A'..'Z' |'_' | '.' |'0'..'9' )* ;
 
+IDENTIFIERCOLON : ('a'..'z' |'A'..'Z' |'_' ) ('a'..'z' |'A'..'Z' |'_' | '0'..'9' )* ':';
+
 COMMENT	: '//' .* '\n' {$channel=HIDDEN;}
         | '/*' ( options {greedy=false;} : . )* '*/' {$channel=HIDDEN;}
         ;
@@ -593,3 +601,5 @@ PAREN_CLOSE : ')' ;
 QUOTE : '"' ;
 
 COMMA : ',' ;
+
+COLON : ':' ;
