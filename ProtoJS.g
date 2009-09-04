@@ -265,19 +265,11 @@ field
         int isNumericType;
     }
     @init {$field::defaultValue=NULL; $field::isNumericType=0;}
-    :  ( ( (ProtoJSOPTIONAL multiplicitive_type field_name EQUALS field_offset default_value? ITEM_TERMINATOR ) | ( (REQUIRED|REPEATED) multiplicitive_type field_name EQUALS field_offset ITEM_TERMINATOR ) ) -> WS["\t"] REPEATED["repeated"] WS[" "] multiplicitive_type WS[" "] field_name WS[" "] EQUALS WS[" "] field_offset WS[" "] SQBRACKET_OPEN["["] IDENTIFIER["packed"] EQUALS["="] BOOL_LITERAL["true"] SQBRACKET_CLOSE["]"] ITEM_TERMINATOR WS["\n"] )
-    {
-        defineField(ctx, $field::fieldType,$field::fieldName,$field::defaultValue,$field::fieldOffset,$REPEATED==NULL,$REQUIRED!=NULL,1);
-        stringFree($field::fieldName);
-        stringFree($field::fieldType);
-        stringFree($field::defaultValue);
-    }
-     |
-     (( (ProtoJSOPTIONAL field_type field_name EQUALS field_offset default_value? ITEM_TERMINATOR )  -> WS["\t"] ProtoJSOPTIONAL WS[" "] field_type WS[" "] field_name WS[" "] EQUALS WS[" "] field_offset WS[" "] default_value ITEM_TERMINATOR WS["\n"] )
+    :
+     (( (ProtoJSOPTIONAL (multiplicitive_type|field_type) field_name EQUALS field_offset default_value? ITEM_TERMINATOR )  -> WS["\t"] ProtoJSOPTIONAL WS[" "] multiplicitive_type field_type WS[" "] field_name WS[" "] EQUALS WS[" "] field_offset WS[" "] default_value ITEM_TERMINATOR WS["\n"] )
       | 
-      ( ( (REQUIRED|REPEATED) field_type field_name EQUALS field_offset ITEM_TERMINATOR ) 
-          -> {$field::isNumericType && $REQUIRED==NULL}?WS["\t"] REPEATED WS[" "] field_type WS[" "] field_name WS[" "] EQUALS WS[" "] field_offset  WS[" "] SQBRACKET_OPEN["["] IDENTIFIER["packed"] EQUALS["="] BOOL_LITERAL["true"] SQBRACKET_CLOSE["]"] ITEM_TERMINATOR WS["\n"]  
-          -> WS["\t"] REQUIRED REPEATED WS[" "] field_type WS[" "] field_name WS[" "] EQUALS WS[" "] field_offset ITEM_TERMINATOR WS["\n"] ) )
+      ( ( (REQUIRED|REPEATED) (multiplicitive_type|field_type) field_name EQUALS field_offset ITEM_TERMINATOR )  
+          -> WS["\t"] REQUIRED REPEATED WS[" "] multiplicitive_type field_type WS[" "] field_name WS[" "] EQUALS WS[" "] field_offset ITEM_TERMINATOR WS["\n"] ) )
     {
         defineField(ctx, $field::fieldType,$field::fieldName,$field::defaultValue,$field::fieldOffset,$REPEATED==NULL,$REQUIRED!=NULL,0);
         stringFree($field::fieldName);
@@ -302,27 +294,27 @@ field_name
     ;
 
 field_type
-    : numeric_type
+    : (numeric_type ->QUALIFIEDIDENTIFIER["PROTO."] numeric_type)
     {
         $field::isNumericType=1;
         $field::fieldType=stringDup($numeric_type.text);
     }
-    | array_type
+    | (array_type -> QUALIFIEDIDENTIFIER["PROTO."] array_type)
     {
         $field::isNumericType=0;
         $field::fieldType=stringDup($array_type.text);
     }
-    | advanced_numeric_type
+    | (advanced_numeric_type -> QUALIFIEDIDENTIFIER["PBJ."] advanced_numeric_type)
     {
        $field::isNumericType=1;
        $field::fieldType=stringDup($advanced_numeric_type.text);
     }
-    | advanced_array_type
+    | (advanced_array_type -> QUALIFIEDIDENTIFIER["PBJ."] advanced_array_type)
     {
        $field::isNumericType=0;
        $field::fieldType=stringDup($advanced_array_type.text);
     }
-    | ( IDENTIFIER 
+    | ( IDENTIFIER
         -> {SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)!=NULL
             && *(unsigned int*)SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)<28}?
               UINT32["uint32"] 
@@ -332,7 +324,7 @@ field_type
         -> {SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)!=NULL
             && *(unsigned int*)SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)==64}?
              UINT64["uint64"] 
-        -> IDENTIFIER )
+        -> QUALIFIEDIDENTIFIER[$NameSpace::packageDot->chars] IDENTIFIER )
     {
        $field::isNumericType=(SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)!=NULL||
                                 SCOPE_TOP(Symbols)->enum_sizes->get(SCOPE_TOP(Symbols)->enum_sizes,$IDENTIFIER.text->chars)!=NULL);
@@ -341,7 +333,7 @@ field_type
     ;
 multiplicitive_type
     : 
-    multiplicitive_advanced_type 
+    (multiplicitive_advanced_type -> QUALIFIEDIDENTIFIER["PBJ."] multiplicitive_advanced_type)
     {
        $field::fieldType=stringDup($multiplicitive_advanced_type.text);        
     }
@@ -376,38 +368,38 @@ array_type:	STRING
 	|	BYTES
 	;
 
-multiplicitive_advanced_type:
-    |   NORMAL -> FLOAT["float"]
-    |   VECTOR2F -> FLOAT["float"]
-    |   VECTOR2D -> DOUBLE["double"]
-    |   VECTOR3F -> FLOAT["float"]
-    |   VECTOR3D -> DOUBLE["double"]
-    |   VECTOR4F -> FLOAT["float"]
-    |   VECTOR4D -> DOUBLE["double"]
-    |   QUATERNION -> FLOAT["float"]
-    |   BOUNDINGSPHERE3F -> FLOAT["float"]
-    |   BOUNDINGSPHERE3D -> DOUBLE["double"]
-    |   BOUNDINGBOX3F3F -> FLOAT["float"]
-    |   BOUNDINGBOX3D3F -> DOUBLE["double"]
+multiplicitive_advanced_type 
+    :   NORMAL 
+    |   VECTOR2F
+    |   VECTOR2D
+    |   VECTOR3F
+    |   VECTOR3D
+    |   VECTOR4F
+    |   VECTOR4D
+    |   QUATERNION 
+    |   BOUNDINGSPHERE3F 
+    |   BOUNDINGSPHERE3D 
+    |   BOUNDINGBOX3F3F 
+    |   BOUNDINGBOX3D3F 
     ;
 
-advanced_numeric_type:	UINT8 -> UINT32["uint32"]
-	|	INT8 -> INT32["int32"]
-	|	SINT8 -> SINT32["sint32"]
-	|	FIXED8 -> INT32["uint32"]
-	|	SFIXED8 -> INT32["sint32"]
-	|	INT16 -> INT32["int32"]
-	|	SINT16 -> SINT32["sint32"]
-	|	FIXED16 -> INT32["uint32"]
-	|	SFIXED16 -> INT32["sint32"]
-    |   UINT16 -> UINT32["uint32"]
-    |   ANGLE -> FLOAT["float"]
-    |   TIME -> FIXED64["fixed64"]
-    |   DURATION -> SFIXED64["sfixed64"]
+advanced_numeric_type:	UINT8 
+	|	INT8 
+	|	SINT8
+	|	FIXED8
+	|	SFIXED8
+	|	INT16 
+	|	SINT16 
+	|	FIXED16
+	|	SFIXED16
+    |   UINT16 
+    |   ANGLE 
+    |   TIME 
+    |   DURATION 
     ; 
 
-advanced_array_type:	   UUID -> BYTES["bytes"]
-    |   SHA256 -> BYTES["bytes"]
+advanced_array_type:	   UUID 
+    |   SHA256 
     ; 
 
 literal_value
@@ -601,4 +593,3 @@ PAREN_CLOSE : ')' ;
 QUOTE : '"' ;
 
 COMMA : ',' ;
-
