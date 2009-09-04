@@ -82,6 +82,8 @@ void  initNameSpace(pProtoJSParser ctx, SCOPE_TYPE(NameSpace) symtab) {
         symtab->externalNamespace=stringDup(lowerNamespace->externalNamespace);
         if (lowerNamespace->package)
             symtab->package=stringDup(lowerNamespace->package);
+        if (lowerNamespace->packageDot)
+            symtab->packageDot=stringDup(lowerNamespace->packageDot);
     }
     if (true) {
         char lst='.';
@@ -92,6 +94,7 @@ void  initNameSpace(pProtoJSParser ctx, SCOPE_TYPE(NameSpace) symtab) {
         }
     }
     symtab->package=NULL;
+    symtab->packageDot=NULL;
     symtab->imports = antlr3ListNew(1);
     symtab->free=freeNameSpace;
     

@@ -50,6 +50,7 @@ scope NameSpace {
     pANTLR3_STRING externalNamespace;
     pANTLR3_STRING internalNamespace;
     pANTLR3_STRING package;
+    pANTLR3_STRING packageDot;
     pANTLR3_LIST imports;
 }
 
@@ -103,6 +104,8 @@ package
 packagename : QUALIFIEDIDENTIFIER 
     {
             $NameSpace::package=stringDup($QUALIFIEDIDENTIFIER.text);
+            $NameSpace::packageDot=stringDup($QUALIFIEDIDENTIFIER.text);
+            $NameSpace::packageDot->append8($NameSpace::packageDot,".");
     }
     ;
 importrule
@@ -118,7 +121,7 @@ message
         int isExtension;
         pANTLR3_STRING messageName;
     }
-    :   ( message_or_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE -> message_or_extend WS[" "] message_identifier WS[" "] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE WS["\n"] )
+    :   ( message_or_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE -> IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] message_identifier QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"] )
         {
             if(!$message::isExtension) {
                 defineType( ctx, $message::messageName );
@@ -590,3 +593,12 @@ COMMENT	: '//' .* '\n' {$channel=HIDDEN;}
         ;
 
 WS       : (' '|'\t'|'\n'|'\r')+ {$channel=HIDDEN;} ;
+
+PAREN_OPEN : '(' ;
+
+PAREN_CLOSE : ')' ;
+
+QUOTE : '"' ;
+
+COMMA : ',' ;
+
