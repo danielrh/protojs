@@ -98,6 +98,9 @@ char* parsePackage (const char*filename, const char *outputFilename, const char 
     parseProto (filename, outputFilename,outputInternalNamespace,outputExternalNamespace, &retval, NULL, 1, NULL,NULL,NULL,NULL,NULL);
     return retval;
 }
+bool generateASTProto (const char*filename, const char *outputFilename,const char * outputInternalNamespace, const char*outputExternalNamespace, char*package,pANTLR3_HASH_TABLE typeTable,ProtoJSParser_protocol_return*retval, pProtoJSLexer*ret_lxr, pProtoJSParser*ret_psr,pANTLR3_COMMON_TOKEN_STREAM*ret_tstream, pANTLR3_INPUT_STREAM* ret_stream) {
+    return parseProto(filename, outputFilename,outputInternalNamespace,outputExternalNamespace,&package,typeTable,0,retval, ret_lxr, ret_psr,ret_tstream, ret_stream);
+}
 int main(int argc, char *argv[])
 {
     
@@ -142,7 +145,7 @@ int main(int argc, char *argv[])
     char*package=parsePackage((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace);
     pANTLR3_HASH_TABLE qualifiedTypes=antlr3HashTableNew(11);
     parseTypes((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace,package,qualifiedTypes);
-    if(parseProto((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace,&package,qualifiedTypes,0,&pbjAST,&lxr,&psr,&tstream,&input)) {
+    if(generateASTProto((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace,package,qualifiedTypes,&pbjAST,&lxr,&psr,&tstream,&input)) {
         pANTLR3_COMMON_TREE_NODE_STREAM    nodes;
         nodes   = antlr3CommonTreeNodeStreamNewTree(pbjAST.tree, ANTLR3_SIZE_HINT); // sIZE HINT WILL SOON BE DEPRECATED!!
         pANTLR3_STRING s = nodes->stringFactory->newRaw(nodes->stringFactory);
