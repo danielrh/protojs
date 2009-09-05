@@ -2,6 +2,7 @@
 <html>
 <head>
 <script type="text/javascript" src="protobuf.js"></script>
+<script type="text/javascript" src="output.proto"></script>
 <script type="text/javascript">
 window.onload = function() {
   var my64 = new PROTO.I64(2147483647,2147483648,-1);
@@ -33,6 +34,7 @@ window.onload = function() {
   output.value += "-4294967396-8589934602 = "+NoneHundred.sub(twoTen).toNumber()+"\n";
   var flt=2350.2352355552;
   output.value += flt + ": "+PROTO.binaryParser.fromDouble(flt)+" back "+PROTO.binaryParser.toDouble(PROTO.binaryParser.fromDouble(flt))+"\n";
+  output.value += Sirikata.PB.ExternalMessage;
 };
 </script>
 </head>

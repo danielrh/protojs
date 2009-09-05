@@ -70,10 +70,11 @@ std::string defineable(const unsigned char*dat) {
 }
 void  freeNameSpace(SCOPE_TYPE(NameSpace) symtab) {
     symtab->imports->free(symtab->imports);
-    stringFree(symtab->jsPackageDefinition);
+
     if (symtab->parent==NULL) {
         stringFree(symtab->package);
         stringFree(symtab->packageDot);
+        stringFree(symtab->jsPackageDefinition);
         symtab->qualifiedTypes->free(symtab->qualifiedTypes);
     }    
     //delete symtab->output->cpp;    
@@ -87,7 +88,7 @@ void  initNameSpace(pProtoJSParser ctx, SCOPE_TYPE(NameSpace) symtab) {
         symtab->filename=stringDup(lowerNamespace->filename);
         symtab->internalNamespace=stringDup(lowerNamespace->internalNamespace);
         symtab->externalNamespace=stringDup(lowerNamespace->externalNamespace);
-        symtab->jsPackageDefinition=stringDup(lowerNamespace->jsPackageDefinition);
+        symtab->jsPackageDefinition=lowerNamespace->jsPackageDefinition;
         symtab->package=lowerNamespace->package;
         symtab->packageDot=lowerNamespace->packageDot;
         symtab->qualifiedTypes=lowerNamespace->qualifiedTypes;
@@ -133,18 +134,18 @@ void  initSymbolTable(SCOPE_TYPE(Symbols) symtab, pANTLR3_STRING messageName, in
     }
     symtab->free = freeSymbolTable;
 }
-pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id){
-    char * where=(char*)id->chars;
-    char *whereEnd=(char*)id->chars;
+pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id, pANTLR3_STRING id_package){
+    char * where=(char*)id_package->chars;
+    char *whereEnd=(char*)id_package->chars;
     std::string retval;
     do {
         whereEnd=(whereEnd!=NULL&&whereEnd[0]!='\0')?strchr(whereEnd+1,'.'):NULL;
-        std::string package=std::string(where,whereEnd?whereEnd-where:id->len);
-        retval+='!';
+        std::string package=std::string(where,whereEnd?whereEnd-where:id_package->len);
+        retval+="if (typeof(";
         retval+=package;
-        retval+="&&";
+        retval+=")==\"undefined\") {";
         retval+=package;
-        retval+=" = {};\n";
+        retval+=" = {};}\n";
     }while (whereEnd);
     {
         pANTLR3_STRING sretval=id->factory->newPtr(id->factory,(pANTLR3_UINT8)retval.data(),retval.length());

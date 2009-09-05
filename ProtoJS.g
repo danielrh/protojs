@@ -83,7 +83,7 @@ protocol
     @init {
         initSymbolTable(SCOPE_TOP(Symbols),NULL,0);
     }
-    : protoroot ->protoroot
+    : protoroot ->IDENTIFIER[$NameSpace::jsPackageDefinition->chars] protoroot
     ;
 
 protoroot
@@ -100,7 +100,7 @@ package
     
     : ( PACKAGELITERAL packagename ITEM_TERMINATOR -> WS["\n"])
         {
-            jsPackageDefine($NameSpace::jsPackageDefinition);
+            jsPackageDefine($NameSpace::jsPackageDefinition,$packagename.text);
         }
 	;
 packagename : QUALIFIEDIDENTIFIER 
@@ -121,7 +121,10 @@ message
         int isExtension;
         pANTLR3_STRING messageName;
     }
-    :   ( message_or_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE -> IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] message_identifier QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"] )
+    :   ( message_or_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE 
+           -> {ctx->pProtoJSParser_SymbolsStack_limit<=1}?
+                  IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] message_identifier QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
+                  -> message_identifier WS[" "] COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] message_identifier QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
         {
             if(!$message::isExtension) {
                 defineType( ctx, $message::messageName );
@@ -175,7 +178,7 @@ message_element
 
 extensions
         : 
-        ( EXTENSIONS integer TO integer_inclusive ITEM_TERMINATOR -> WS["\t"] EXTENSIONS WS[" "] integer WS[" "] TO WS[" "] integer_inclusive ITEM_TERMINATOR WS["\n"] )
+        ( EXTENSIONS integer TO integer_inclusive ITEM_TERMINATOR -> WS["\n"] ) //WS["\t"] EXTENSIONS WS[" "] integer WS[" "] TO WS[" "] integer_inclusive ITEM_TERMINATOR WS["\n"] 
         {
             defineExtensionRange(ctx, $integer.text, $integer_inclusive.text);
         }
@@ -201,7 +204,7 @@ enum_def
     @init {
         $enum_def::enumList=antlr3ListNew(1);
     }
-	:	( ENUM enum_identifier BLOCK_OPEN enum_element+ BLOCK_CLOSE -> WS["\t"] ENUM WS[" "] enum_identifier WS[" "] BLOCK_OPEN WS["\n"] (WS["\t"] enum_element)+ WS["\t"] BLOCK_CLOSE WS["\n"] )
+	:	( ENUM enum_identifier BLOCK_OPEN enum_element+ BLOCK_CLOSE -> WS["\t"] enum_identifier COLON[":"] WS[" "] BLOCK_OPEN WS["\n"] (WS["\t"] enum_element)+ WS["\t"] BLOCK_CLOSE COMMA[","]WS["\n"] )
         {
             defineEnum( ctx, $message::messageName, $enum_def::enumName, $enum_def::enumList);
             $enum_def::enumList->free($enum_def::enumList);
@@ -210,7 +213,7 @@ enum_def
 	;
 
 enum_element
-	:	(IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] IDENTIFIER WS[" "] EQUALS WS[" "] integer ITEM_TERMINATOR WS["\n"] )
+	:	(IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] IDENTIFIER WS[" "] COLON[":"] integer COMMA[","] WS["\n"] )
         {
             defineEnumValue( ctx, $message::messageName, $enum_def::enumName, $enum_def::enumList, $IDENTIFIER.text, $integer.text );
         }
@@ -233,7 +236,7 @@ flags_def
         $flags_def::flagList=antlr3ListNew(1);
         
     }
-	:	( flags flag_identifier BLOCK_OPEN flag_element+ BLOCK_CLOSE -> WS["\t"] ENUM["enum"] WS[" "] flag_identifier WS[" "] BLOCK_OPEN WS["\n"] (WS["\t"] flag_element)+ WS["\t"] BLOCK_CLOSE WS["\n"] )
+	:	( flags flag_identifier BLOCK_OPEN flag_element+ BLOCK_CLOSE -> WS["\t"] flag_identifier COLON[":"] WS[" "] BLOCK_OPEN WS["\n"] (WS["\t"] flag_element)+ WS["\t"] BLOCK_CLOSE COMMA[","] WS["\n"] )
         {
             defineFlag( ctx, $message::messageName, $flags_def::flagName, $flags_def::flagList, $flags_def::flagBits);
             $flags_def::flagList->free($flags_def::flagList);
@@ -249,7 +252,7 @@ flag_identifier
 	;
 
 flag_element
-	:	( IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] IDENTIFIER WS[" "] EQUALS WS[" "] integer ITEM_TERMINATOR WS["\n"])
+	:	( IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] IDENTIFIER WS[" "] COLON[":"] WS[" "] integer COMMA[","] WS["\n"])
         {
             defineFlagValue( ctx, $message::messageName, $flags_def::flagName, $flags_def::flagList, $IDENTIFIER.text , $integer.text);
         }
@@ -278,7 +281,7 @@ field
         stringFree($field::defaultValue);
     }
 	;
-none : (DOT?)->IDENTIFIER["None"] ;
+none : (DOT?)->IDENTIFIER["null"] ;
 field_offset
     : integer
     {
