@@ -121,10 +121,10 @@ PROTO.I64.from32pair = function(msw, lsw, sign) {
 //+ Jonas Raoni Soares Silva
 //@ http://jsfromhell.com/classes/binary-parser [rev. #1]
 
-BinaryParser = function(bigEndian, allowExceptions){
+PROTO.BinaryParser = function(bigEndian, allowExceptions){
     this.bigEndian = bigEndian, this.allowExceptions = allowExceptions;
 };
-with({p: BinaryParser.prototype}){
+with({p: PROTO.BinaryParser.prototype}){
     p.encodeFloat = function(number, precisionBits, exponentBits){
         var bias = Math.pow(2, exponentBits - 1) - 1, minExp = -bias + 1, maxExp = bias, minUnnormExp = minExp - precisionBits,
         status = isNaN(n = parseFloat(number)) || n == -Infinity || n == +Infinity ? n : 0,
@@ -148,9 +148,9 @@ with({p: BinaryParser.prototype}){
             exp = maxExp + 1, i = bias + 2, status == -Infinity ? signal = 1 : isNaN(status) && (bin[i] = 1));
         for(n = Math.abs(exp + bias), j = exponentBits + 1, result = ""; --j; result = (n % 2) + result, n = n >>= 1);
         for(n = 0, j = 0, i = (result = (signal ? "1" : "0") + result + bin.slice(i, i + precisionBits).join("")).length, r = [];
-            i; n += (1 << j) * result.charAt(--i), j == 7 && (r[r.length] = String.fromCharCode(n), n = 0), j = (j + 1) % 8);
-        r[r.length] = n ? String.fromCharCode(n) : "";
-        return (this.bigEndian ? r.reverse() : r).join("");
+            i; n += (1 << j) * result.charAt(--i), j == 7 && (r[r.length] = n, n = 0), j = (j + 1) % 8);
+        r[r.length] = n;
+        return (this.bigEndian ? r.reverse() : r);
     };
     p.encodeInt = function(number, bits, signed){
         var max = Math.pow(2, bits), r = [];
@@ -200,7 +200,7 @@ with({p: BinaryParser.prototype}){
         };
         p.setBuffer = function(data){
             if(data){
-                for(var l, i = l = data.length, b = this.buffer = new Array(l); i; b[l - i] = data.charCodeAt(--i));
+                for(var l, i = l = data.length, b = this.buffer = new Array(l); i; b[l - i] = data[--i]);
                 this.bigEndian && b.reverse();
             }
         };
@@ -234,7 +234,7 @@ with({p: BinaryParser.prototype}){
     p.toDouble = function(data){return this.decodeFloat(data, 52, 11);};
     p.fromDouble = function(number){return this.encodeFloat(number, 52, 11);};
 }
-
+PROTO.binaryParser = new PROTO.BinaryParser(false,false);
 PROTO.array =
     (function() {
         var SUPER = Array;

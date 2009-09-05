@@ -32,7 +32,7 @@ window.onload = function() {
   output.value += "-8589934602-4294967396 = "+NtwoTen.sub(oneHundred).toNumber()+"\n";
   output.value += "-4294967396-8589934602 = "+NoneHundred.sub(twoTen).toNumber()+"\n";
   var flt=2350.2352355552;
-  output.value += flt + ": "+(new BinaryParser(false,false)).fromDouble(flt)+"\n";
+  output.value += flt + ": "+PROTO.binaryParser.fromDouble(flt)+" back "+PROTO.binaryParser.toDouble(PROTO.binaryParser.fromDouble(flt))+"\n";
 };
 </script>
 </head>
