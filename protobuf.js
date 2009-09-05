@@ -149,16 +149,16 @@ with({p: PROTO.BinaryParser.prototype}){
         for(n = Math.abs(exp + bias), j = exponentBits + 1, result = ""; --j; result = (n % 2) + result, n = n >>= 1);
         for(n = 0, j = 0, i = (result = (signal ? "1" : "0") + result + bin.slice(i, i + precisionBits).join("")).length, r = [];
             i; n += (1 << j) * result.charAt(--i), j == 7 && (r[r.length] = n, n = 0), j = (j + 1) % 8);
-        r[r.length] = n;
+        
         return (this.bigEndian ? r.reverse() : r);
     };
     p.encodeInt = function(number, bits, signed){
         var max = Math.pow(2, bits), r = [];
         (number >= max || number < -(max >> 1)) && this.warn("encodeInt::overflow") && (number = 0);
         number < 0 && (number += max);
-        for(; number; r[r.length] = String.fromCharCode(number % 256), number = Math.floor(number / 256));
-        for(bits = -(-bits >> 3) - r.length; bits--; r[r.length] = "\0");
-        return (this.bigEndian ? r.reverse() : r).join("");
+        for(; number; r[r.length] = number % 256, number = Math.floor(number / 256));
+        for(bits = -(-bits >> 3) - r.length; bits--;);
+        return (this.bigEndian ? r.reverse() : r);
     };
     p.decodeFloat = function(data, precisionBits, exponentBits){
         var b = ((b = new this.Buffer(this.bigEndian, data)).checkBuffer(precisionBits + exponentBits + 1), b),
