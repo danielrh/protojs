@@ -231,7 +231,7 @@ void defineType(pProtoJSParser ctx, pANTLR3_STRING id) {
     qualifiedType->appendS(qualifiedType,id);
     char * qtyp=strdup((const char*)qualifiedType->chars);
     SCOPE_TOP(NameSpace)->qualifiedTypes->put(SCOPE_TOP(NameSpace)->qualifiedTypes,qtyp,qtyp,&free);
-    printf ("Putting %s into type set\n",qtyp);
+    //printf ("Putting %s into type set\n",qtyp);
 }
 
 

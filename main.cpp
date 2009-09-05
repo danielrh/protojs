@@ -6,7 +6,7 @@ extern "C" {
 #include <sstream>
 #include <iostream>
 #include <fstream>
-char* parsePackage (const char*filename, const char * outputInternalNamespace, const char*outputExternalNamespace) {
+char* parsePackage (const char*filename, const char *outputFilename, const char * outputInternalNamespace, const char*outputExternalNamespace) {
     
     pANTLR3_INPUT_STREAM input = antlr3AsciiFileStreamNew((pANTLR3_UINT8)filename);
 
@@ -35,7 +35,7 @@ char* parsePackage (const char*filename, const char * outputInternalNamespace, c
     SCOPE_TYPE(NameSpace) ns=NameSpacePush(ctx);
     ctx->pProtoJSParser_NameSpaceTop=ns;
     ns->filename=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
-    ns->filename->append8(SCOPE_TOP(NameSpace)->filename,(const char*)filename);
+    ns->filename->append8(SCOPE_TOP(NameSpace)->filename,(const char*)outputFilename);
     ns->internalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
     ns->internalNamespace->append8(ns->internalNamespace,(const char*)outputInternalNamespace);
     ns->externalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
@@ -46,10 +46,23 @@ char* parsePackage (const char*filename, const char * outputInternalNamespace, c
     initNameSpace(ctx,ns);
     ProtoJSParser_protocol_return pbjAST=psr->protocol(psr);
     char *retval=strdup((const char*)ns->package->chars);
-    freeNameSpace(ns);
+    NameSpacePop(ctx);
+    psr->free(psr);
+    psr = NULL;
+
+    tstream->free(tstream);
+    tstream = NULL;
+
+
+    lxr->free(lxr);
+    lxr = NULL;
+
+    input->close(input);
+    input = NULL;
+
     return retval;
 }
-ProtoJSParser_protocol_return parseTypes (const char*filename, const char *outputFilename,const char * outputInternalNamespace, const char*outputExternalNamespace, const char*package,pANTLR3_HASH_TABLE typeTable) {
+bool parseProto (const char*filename, const char *outputFilename,const char * outputInternalNamespace, const char*outputExternalNamespace, const char*package,pANTLR3_HASH_TABLE typeTable, bool cleanUp,ProtoJSParser_protocol_return*retval, pProtoJSLexer*ret_lxr, pProtoJSParser*ret_psr,pANTLR3_COMMON_TOKEN_STREAM*ret_tstream, pANTLR3_INPUT_STREAM* ret_stream) {
     
     pANTLR3_INPUT_STREAM input = antlr3AsciiFileStreamNew((pANTLR3_UINT8)filename);
 
@@ -78,7 +91,7 @@ ProtoJSParser_protocol_return parseTypes (const char*filename, const char *outpu
     SCOPE_TYPE(NameSpace) ns=NameSpacePush(ctx);
     ctx->pProtoJSParser_NameSpaceTop=ns;
     ns->filename=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
-    ns->filename->append8(SCOPE_TOP(NameSpace)->filename,(const char*)filename);
+    ns->filename->append8(SCOPE_TOP(NameSpace)->filename,(const char*)outputFilename);
     ns->internalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
     ns->internalNamespace->append8(ns->internalNamespace,(const char*)outputInternalNamespace);
     ns->externalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
@@ -94,8 +107,37 @@ ProtoJSParser_protocol_return parseTypes (const char*filename, const char *outpu
     ns->qualifiedTypes=typeTable;
     ProtoJSParser_protocol_return pbjAST=psr->protocol(psr);
     ns->qualifiedTypes=tempTable;
-    freeNameSpace(ns);
-    return pbjAST;
+    NameSpacePop(ctx);
+    bool success=true;
+    if (psr->pParser->rec->getNumberOfSyntaxErrors(psr->pParser->rec) > 0)
+    {
+        success=false;
+        ANTLR3_FPRINTF(stderr, "The parser returned %d errors, tree walking aborted.\n", psr->pParser->rec->getNumberOfSyntaxErrors(psr->pParser->rec));
+    }
+
+    if (cleanUp) {
+        psr->free(psr);
+        psr = NULL;
+        
+        tstream->free(tstream);
+        tstream = NULL;
+        
+        
+        lxr->free(lxr);
+        lxr = NULL;
+        input->close(input);
+        input = NULL;
+    }else {
+        *retval=pbjAST;
+        *ret_lxr=lxr;
+        *ret_psr=psr;
+        *ret_tstream=tstream;
+        *ret_stream=input;
+    }
+    return success;
+}
+bool parseTypes (const char*filename, const char *outputFilename,const char * outputInternalNamespace, const char*outputExternalNamespace, const char*package,pANTLR3_HASH_TABLE typeTable) {
+    return parseProto (filename, outputFilename,outputInternalNamespace,outputExternalNamespace, package, typeTable, 1, NULL,NULL,NULL,NULL,NULL);
 }
 int main(int argc, char *argv[])
 {
@@ -138,54 +180,10 @@ int main(int argc, char *argv[])
             outputExternalNamespace=argv[argindex]+12;
         }
     }
-    char*package=parsePackage((const char*)filename,outputInternalNamespace,outputExternalNamespace);
+    char*package=parsePackage((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace);
     pANTLR3_HASH_TABLE qualifiedTypes=antlr3HashTableNew(11);
     parseTypes((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace,package,qualifiedTypes);
-    parseTypes((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace,package,qualifiedTypes);
-    input = antlr3AsciiFileStreamNew(filename);
-
-    if ( input == NULL ) {
-        fprintf(stderr, "Failed to open file %s\n", (char *)filename);
-        exit(1);
-    }
-
-    lxr = ProtoJSLexerNew(input);
-    if ( lxr == NULL ) {
-        fprintf(stderr, "Unable to create the lexer due to malloc() failure1\n");
-        exit(1);
-    }
-
-    tstream = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
-    if (tstream == NULL) {
-	fprintf(stderr, "Out of memory trying to allocate token stream\n");
-	exit(1);
-    }
-
-    psr = ctx = ProtoJSParserNew(tstream);
-    if (psr == NULL) {
-        fprintf(stderr, "Out of memory trying to allocate parser\n");
-        exit(ANTLR3_ERR_NOMEM);
-    }
-    ctx->pProtoJSParser_NameSpaceTop=NameSpacePush(ctx);
-    SCOPE_TOP(NameSpace)->filename=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
-    SCOPE_TOP(NameSpace)->filename->append8(SCOPE_TOP(NameSpace)->filename,(const char*)outputFilename);
-    SCOPE_TOP(NameSpace)->internalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
-    SCOPE_TOP(NameSpace)->internalNamespace->append8(SCOPE_TOP(NameSpace)->internalNamespace,(const char*)outputInternalNamespace);
-    SCOPE_TOP(NameSpace)->externalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
-    SCOPE_TOP(NameSpace)->externalNamespace->append8(SCOPE_TOP(NameSpace)->externalNamespace,(const char*)outputExternalNamespace);
-    if (strlen(outputExternalNamespace)) {
-        SCOPE_TOP(NameSpace)->externalNamespace->append8(SCOPE_TOP(NameSpace)->externalNamespace,".");        
-    }
-    initNameSpace(ctx,SCOPE_TOP(NameSpace));
-    pbjAST=psr->protocol(psr);
-    
-    if (psr->pParser->rec->getNumberOfSyntaxErrors(psr->pParser->rec) > 0)
-    {
-        ANTLR3_FPRINTF(stderr, "The parser returned %d errors, tree walking aborted.\n", psr->pParser->rec->getNumberOfSyntaxErrors(psr->pParser->rec));
- 
-    }
-    else
-    {
+    if(parseProto((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace,package,qualifiedTypes,0,&pbjAST,&lxr,&psr,&tstream,&input)) {
         pANTLR3_COMMON_TREE_NODE_STREAM    nodes;
         nodes   = antlr3CommonTreeNodeStreamNewTree(pbjAST.tree, ANTLR3_SIZE_HINT); // sIZE HINT WILL SOON BE DEPRECATED!!
         pANTLR3_STRING s = nodes->stringFactory->newRaw(nodes->stringFactory);
@@ -197,25 +195,16 @@ int main(int argc, char *argv[])
         stringFree(s);
         nodes   ->free  (nodes);        nodes   = NULL;
     }
-/*
-    if (SCOPE_TOP(NameSpace)->output->cpp)
-        fclose(SCOPE_TOP(NameSpace)->output->cpp);
-    if (SCOPE_TOP(NameSpace)->output->cs)
-        fclose(SCOPE_TOP(NameSpace)->output->cs);
-*/
-    NameSpacePop(ctx);
     psr->free(psr);
     psr = NULL;
-
+    
     tstream->free(tstream);
     tstream = NULL;
-
-
+    
+    
     lxr->free(lxr);
     lxr = NULL;
-
     input->close(input);
     input = NULL;
-
     return 0;
 }
