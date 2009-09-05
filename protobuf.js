@@ -1,5 +1,90 @@
 
+
+
 var PROTO = {};
+
+PROTO.I64 = function (msw, lsw, sign) {
+    this.msw = msw;
+    this.lsw = lsw;
+    if (sign === true) sign = -1;
+    if (!sign) sign = 1;
+    this.sign = sign;
+};
+
+PROTO.I64.prototype = {
+    toNumber: function() {
+        return (this.msw*4294967296 + this.lsw)*this.sign;
+    },
+    convertToUnsigned: function() {
+        var local_lsw;
+        if (this.sign<0) {
+            local_lsw=this.lsw+2147483647;
+        }else {
+            local_lsw=this.lsw;
+        }
+        var local_msw;
+        if (this.sign<0) {
+            local_msw=this.msw+2147483647;
+        }else {
+            local_msw=this.msw;
+        }
+        return new PROTO.I64(local_msw,local_lsw,1);
+    },
+    convertToZigzag: function() {
+        var local_lsw;
+        if (this.sign<0) {
+            local_lsw=this.lsw*2-1;
+        }else {
+            local_lsw=this.lsw*2;
+        }
+        var local_msw=this.msw*2+((local_lsw>2147483647)?1:0);
+        return new PROTO.I64(local_msw,local_lsw,1);
+    },
+    serializeToLEBase256: function() {
+        var arr = new Array(8);
+        var temp=this.lsw;
+        for (var i = 0; i < 4; i++) {
+            arr[i] = (temp&255);
+            temp=(temp>>8);
+        }
+        temp = this.msw;
+        for (var i = 4; i < 8; i++) {
+            arr[i] = (temp&255);
+            temp=(temp>>8);
+        }
+        return arr;
+    },
+    serializeToLEBase128: function() {
+        var arr = new Array(8);
+        var temp=this.lsw;
+        for (var i = 0; i < 4; i++) {
+            arr[i] = (temp&127);
+            temp=(temp>>7);
+        }
+        
+        arr[4] = (temp&15) | ((this.msw&7)<<4);
+        temp=this.msw;
+        temp=(temp>>3);
+        for (var i = 5; i < 9; i++) {
+            arr[i] = (temp&127);
+            temp=(temp>>7);
+        }
+        return arr;
+    },
+};
+
+PROTO.I64.fromNumber = function(mynum) {
+    var sign = (mynum < 0) ? -1 : 1;
+    mynum *= sign;
+    var lsw = (mynum&4294967295);
+    var msw = ((mynum-(mynum&4294967295))/4294967296);
+    return new PROTO.I64(msw, lsw, sign);
+};
+
+PROTO.I64.from32pair = function(msw, lsw, sign) {
+    return new PROTO.I64(msw, lsw, sign);
+};
+
 
 PROTO.array =
     (function() {
@@ -51,19 +136,6 @@ PROTO.bytes = {
     }
 };
 
-PROTO.bool = {
-    valueOf: function(bool) {
-        if (bool) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-    IsInitialized: function(b) {
-        return (b !== undefined);
-    }
-}
-
 /* [s]fixed64 may be constrained by the accuracy of doubles.
    Fixme: perhaps an array of two 32-bit integers is necessary? or a hex string?
  */
@@ -113,6 +185,8 @@ PROTO.bool = {
             },
             IsInitialized: function(n) {
                 return (n !== undefined);
+            },
+            SerializeToStream: function(thisVal, stream) {
             }
         };
         return myclass;
@@ -124,6 +198,22 @@ PROTO.bool = {
     PROTO.uint32 = makeclass(32, false);
     PROTO.uint64 = makeclass(64, false);
 })();
+
+PROTO.bool = {
+    valueOf: function(bool) {
+        if (bool) {
+            return true;
+        } else {
+            return false;
+        }
+    },
+    IsInitialized: function(b) {
+        return (b !== undefined);
+    },
+    SerializeToStream: PROTO.uint32.SerializeToStream,
+    ParseFromStream: PROTO.uint32.ParseFromStream,
+};
+
 
 (function() {
     function makeclass(bits) {
@@ -271,7 +361,6 @@ PROTO.Message = function(name, properties) {
         }
     }
     return Composite;
-}
 }
 
 
