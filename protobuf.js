@@ -71,13 +71,45 @@ PROTO.I64.prototype = {
         }
         return arr;
     },
+    unsigned_add:function(other) {
+        var temp=this.lsw+other.lsw;
+        var local_msw=this.msw+other.msw;
+        var local_lsw=temp&4294967295;
+        temp-=local_lsw;
+        local_msw+=temp/4294967296;
+        return new PROTO.I64(local_msw,local_lsw,this.sign);
+    },
+    sub : function(other) {
+        if (other.sign!=this.sign) {
+            return this.unsigned_add(other);
+        }
+        if (other.msw>this.msw || (other.msw==this.msw&&other.lsw>this.msw)) {
+            var retval=other.sub(this);
+            retval.sign=-this.sign;
+            return retval;
+        }
+        var local_lsw=this.lsw-other.lsw;
+        var local_msw=this.msw-other.msw;       
+        if (local_lsw<0) {
+            local_lsw+=4294967296;
+            local_msw-=1;
+        }
+        return new PROTO.I64(local_msw,local_lsw,this.sign);        
+    },
+    add : function(other) {
+        if (other.sign<0 && this.sign>=0)
+            return this.sub(new PROTO.I64(other.msw,other.lsw,-other.sign));
+        if (other.sign>=0 && this.sign<0)
+            return other.sub(new PROTO.I64(this.msw,this.lsw,-this.sign));
+        return this.unsigned_add(other);
+    }
 };
 
 PROTO.I64.fromNumber = function(mynum) {
     var sign = (mynum < 0) ? -1 : 1;
     mynum *= sign;
     var lsw = (mynum&4294967295);
-    var msw = ((mynum-(mynum&4294967295))/4294967296);
+    var msw = ((mynum-lsw)/4294967296);
     return new PROTO.I64(msw, lsw, sign);
 };
 

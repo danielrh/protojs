@@ -5,10 +5,14 @@
 <script type="text/javascript">
 window.onload = function() {
   var my64 = new PROTO.I64(2147483647,2147483648,-1);
-//  var my64 = new PROTO.I64(4294967295,4294967295,1);
+  var oneHundred = new PROTO.I64(1,100,1);//4294967396
+  var twoTen = new PROTO.I64(2,10,1);//8589934602
+  var NoneHundred = new PROTO.I64(1,100,-1);//4294967396
+  var NtwoTen = new PROTO.I64(2,10,-1);//8589934602
   var unsigned64 = my64.convertToUnsigned();
   var zigzag64 = my64.convertToZigzag();
   var output = document.getElementById('output');
+  output.value += "" + my64.msw+","+my64.lsw+"\n";
   output.value += "Parts " + my64.msw+","+my64.lsw+"\n";
   output.value += "Unsigned Num: "+unsigned64.toNumber()+"\n";
   output.value += "Unsigned Zigzag Num: "+zigzag64.toNumber()+"\n";
@@ -17,6 +21,16 @@ window.onload = function() {
   output.value += "Unsigned 128: "+unsigned64.serializeToLEBase128().toString()+"\n";
   output.value += "Zig 256: "+my64.convertToZigzag().serializeToLEBase256().toString()+"\n";
   output.value += "Zig 128: "+my64.convertToZigzag().serializeToLEBase128().toString()+"\n";
+  output.value += "4294967396+8589934602 = "+twoTen.add(oneHundred).toNumber()+"\n";
+  output.value += "8589934602-4294967396 = "+twoTen.sub(oneHundred).toNumber()+"\n";
+  output.value += "4294967396-8589934602 = "+oneHundred.sub(twoTen).toNumber()+"\n";
+  output.value += "-4294967396+-8589934602 = "+NtwoTen.add(NoneHundred).toNumber()+"\n";
+  output.value += "-8589934602--4294967396 = "+NtwoTen.sub(NoneHundred).toNumber()+"\n";
+  output.value += "-4294967396--8589934602 = "+NoneHundred.sub(NtwoTen).toNumber()+"\n";
+  output.value += "-8589934602+4294967396 = "+NtwoTen.add(oneHundred).toNumber()+"\n";
+  output.value += "-4294967396+8589934602 = "+NoneHundred.add(twoTen).toNumber()+"\n";
+  output.value += "-8589934602-4294967396 = "+NtwoTen.sub(oneHundred).toNumber()+"\n";
+  output.value += "-4294967396-8589934602 = "+NoneHundred.sub(twoTen).toNumber()+"\n";
 };
 </script>
 </head>
