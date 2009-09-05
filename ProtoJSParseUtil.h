@@ -53,6 +53,7 @@ typedef struct CsStreams CsStreamOutput;
 
 void initSymbolTable(SCOPE_TYPE(Symbols) symtab, pANTLR3_STRING msgId, int isExtension);
 void initNameSpace(pProtoJSParser ctx, SCOPE_TYPE(NameSpace) symtab);
+void freeNameSpace(SCOPE_TYPE(NameSpace) symtab);
 
 pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id);
 void definePackage(pProtoJSParser ctx, pANTLR3_STRING id);

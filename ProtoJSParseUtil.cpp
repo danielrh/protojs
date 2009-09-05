@@ -70,34 +70,46 @@ std::string defineable(const unsigned char*dat) {
 }
 void  freeNameSpace(SCOPE_TYPE(NameSpace) symtab) {
     symtab->imports->free(symtab->imports);
+    stringFree(symtab->jsPackageDefinition);
+    if (symtab->parent==NULL) {
+        stringFree(symtab->package);
+        stringFree(symtab->packageDot);
+        symtab->qualifiedTypes->free(symtab->qualifiedTypes);
+    }    
     //delete symtab->output->cpp;    
 }
 void  initNameSpace(pProtoJSParser ctx, SCOPE_TYPE(NameSpace) symtab) {
     if (SCOPE_SIZE(NameSpace)>1) {
         SCOPE_TYPE(NameSpace) lowerNamespace;
+        symtab->parent=lowerNamespace;
         int scope_size=SCOPE_SIZE(NameSpace)-2;
         lowerNamespace=(SCOPE_TYPE(NameSpace) ) (SCOPE_INSTANCE(NameSpace,scope_size));
         symtab->filename=stringDup(lowerNamespace->filename);
         symtab->internalNamespace=stringDup(lowerNamespace->internalNamespace);
         symtab->externalNamespace=stringDup(lowerNamespace->externalNamespace);
-        if (lowerNamespace->package)
-            symtab->package=stringDup(lowerNamespace->package);
-        if (lowerNamespace->packageDot)
-            symtab->packageDot=stringDup(lowerNamespace->packageDot);
-    }
-    if (true) {
+        symtab->jsPackageDefinition=stringDup(lowerNamespace->jsPackageDefinition);
+        symtab->package=lowerNamespace->package;
+        symtab->packageDot=lowerNamespace->packageDot;
+        symtab->qualifiedTypes=lowerNamespace->qualifiedTypes;
+    }else {
+        symtab->parent=NULL;
+        symtab->qualifiedTypes = antlr3HashTableNew(11);    
+        symtab->package = stringDup(symtab->internalNamespace);
+        symtab->packageDot = stringDup(symtab->internalNamespace);
+        symtab->jsPackageDefinition=stringDup(symtab->internalNamespace);
+        symtab->jsPackageDefinition->set8(symtab->jsPackageDefinition,"");
+        symtab->package->set8(symtab->package,"");
+        symtab->packageDot->set8(symtab->packageDot,"");
         char lst='.';
         if (symtab->filename->len>6) {
             lst=symtab->filename->chars[symtab->filename->len-6];
-            assert(lst=='.');
-            symtab->filename->chars[symtab->filename->len-6]='\0';
+            if (lst=='.'||lst=='\0') {
+                symtab->filename->chars[symtab->filename->len-6]='\0';
+            }
         }
     }
-    symtab->package=NULL;
-    symtab->packageDot=NULL;
     symtab->imports = antlr3ListNew(1);
     symtab->free=freeNameSpace;
-    
 }
 void  initSymbolTable(SCOPE_TYPE(Symbols) symtab, pANTLR3_STRING messageName, int isExtension) {
     symtab->num_reserved_ranges=0;
@@ -144,10 +156,12 @@ pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id){
 void  definePackage(pProtoJSParser ctx, pANTLR3_STRING id) {    
     if (id==NULL) {
         if (SCOPE_TOP(NameSpace)->externalNamespace&&SCOPE_TOP(NameSpace)->externalNamespace->len) {
-            SCOPE_TOP(NameSpace)->package=SCOPE_TOP(NameSpace)->externalNamespace->factory->newPtr(SCOPE_TOP(NameSpace)->externalNamespace->factory,SCOPE_TOP(NameSpace)->externalNamespace->chars,SCOPE_TOP(NameSpace)->externalNamespace->len-1);
+            pANTLR3_STRING temp=SCOPE_TOP(NameSpace)->externalNamespace->factory->newPtr(SCOPE_TOP(NameSpace)->externalNamespace->factory,SCOPE_TOP(NameSpace)->externalNamespace->chars,SCOPE_TOP(NameSpace)->externalNamespace->len-1);
+            SCOPE_TOP(NameSpace)->package->setS(SCOPE_TOP(NameSpace)->package,temp);
+            stringFree(temp);
         }
     }else {
-        SCOPE_TOP(NameSpace)->package=stringDup(id);
+        SCOPE_TOP(NameSpace)->package->setS(SCOPE_TOP(NameSpace)->package,id);
         if (SCOPE_TOP(NameSpace)->externalNamespace&&SCOPE_TOP(NameSpace)->externalNamespace->len) {
             SCOPE_TOP(NameSpace)->package->append8(SCOPE_TOP(NameSpace)->package,".");
             pANTLR3_STRING duplicate=SCOPE_TOP(NameSpace)->externalNamespace->subString(SCOPE_TOP(NameSpace)->externalNamespace,0,SCOPE_TOP(NameSpace)->externalNamespace->len-1);
@@ -155,6 +169,8 @@ void  definePackage(pProtoJSParser ctx, pANTLR3_STRING id) {
             stringFree(duplicate);
         }
     }
+    SCOPE_TOP(NameSpace)->packageDot->setS(SCOPE_TOP(NameSpace)->packageDot,SCOPE_TOP(NameSpace)->package);
+    SCOPE_TOP(NameSpace)->packageDot->append8(SCOPE_TOP(NameSpace)->packageDot,".");
 }
 
 pANTLR3_STRING  stringDup(pANTLR3_STRING s) {
@@ -202,12 +218,20 @@ void defineImport(pProtoJSParser ctx, pANTLR3_STRING filename) {
         if (s->len>6)
             s->chars[s->len-6]=lst;
     }
-
 }
 
 void defineType(pProtoJSParser ctx, pANTLR3_STRING id) {
     if (SCOPE_TOP(Symbols) == NULL) return;
     SCOPE_TOP(Symbols)->types->put(SCOPE_TOP(Symbols)->types, id->chars, id, NULL);
+    pANTLR3_STRING qualifiedType=stringDup(SCOPE_TOP(NameSpace)->packageDot);
+    for (int i = 0; i < (int)SCOPE_SIZE(Symbols)-1 ; ++i) {
+        qualifiedType->appendS(qualifiedType,((SCOPE_TYPE(Symbols))SCOPE_INSTANCE(Symbols,i))->message);
+        qualifiedType->append8(qualifiedType,".");
+    }
+    qualifiedType->appendS(qualifiedType,id);
+    char * qtyp=strdup((const char*)qualifiedType->chars);
+    SCOPE_TOP(NameSpace)->qualifiedTypes->put(SCOPE_TOP(NameSpace)->qualifiedTypes,qtyp,qtyp,&free);
+    printf ("Putting %s into type set\n",qtyp);
 }
 
 
@@ -410,6 +434,7 @@ static std::ostream& sendCsNs(pProtoJSParser ctx,  std::ostream&fp,const char*de
     return sendCppNs(ctx,fp,delim,loop_add);
 }
 void defineMessage(pProtoJSParser ctx, pANTLR3_STRING id){
+    defineType(ctx, id);
     openNamespace(ctx);
     SCOPE_TOP(Symbols)->message=stringDup(id);
     bool subMessage=isSubMessage(ctx);

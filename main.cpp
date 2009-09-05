@@ -6,7 +6,97 @@ extern "C" {
 #include <sstream>
 #include <iostream>
 #include <fstream>
+char* parsePackage (const char*filename, const char * outputInternalNamespace, const char*outputExternalNamespace) {
+    
+    pANTLR3_INPUT_STREAM input = antlr3AsciiFileStreamNew((pANTLR3_UINT8)filename);
 
+    if ( input == NULL ) {
+        fprintf(stderr, "Failed to open file %s\n", (char *)filename);
+        exit(1);
+    }
+
+    pProtoJSLexer lxr = ProtoJSLexerNew(input);
+    if ( lxr == NULL ) {
+        fprintf(stderr, "Unable to create the lexer due to malloc() failure1\n");
+        exit(1);
+    }
+
+    pANTLR3_COMMON_TOKEN_STREAM tstream = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
+    if (tstream == NULL) {
+	fprintf(stderr, "Out of memory trying to allocate token stream\n");
+	exit(1);
+    }
+    pProtoJSParser ctx;
+    pProtoJSParser psr = ctx = ProtoJSParserNew(tstream);
+    if (psr == NULL) {
+        fprintf(stderr, "Out of memory trying to allocate parser\n");
+        exit(ANTLR3_ERR_NOMEM);
+    }
+    SCOPE_TYPE(NameSpace) ns=NameSpacePush(ctx);
+    ctx->pProtoJSParser_NameSpaceTop=ns;
+    ns->filename=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
+    ns->filename->append8(SCOPE_TOP(NameSpace)->filename,(const char*)filename);
+    ns->internalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
+    ns->internalNamespace->append8(ns->internalNamespace,(const char*)outputInternalNamespace);
+    ns->externalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
+    ns->externalNamespace->append8(SCOPE_TOP(NameSpace)->externalNamespace,(const char*)outputExternalNamespace);
+    if (strlen(outputExternalNamespace)) {
+        ns->externalNamespace->append8(ns->externalNamespace,".");        
+    }
+    initNameSpace(ctx,ns);
+    ProtoJSParser_protocol_return pbjAST=psr->protocol(psr);
+    char *retval=strdup((const char*)ns->package->chars);
+    freeNameSpace(ns);
+    return retval;
+}
+ProtoJSParser_protocol_return parseTypes (const char*filename, const char *outputFilename,const char * outputInternalNamespace, const char*outputExternalNamespace, const char*package,pANTLR3_HASH_TABLE typeTable) {
+    
+    pANTLR3_INPUT_STREAM input = antlr3AsciiFileStreamNew((pANTLR3_UINT8)filename);
+
+    if ( input == NULL ) {
+        fprintf(stderr, "Failed to open file %s\n", (char *)filename);
+        exit(1);
+    }
+    pProtoJSLexer lxr = ProtoJSLexerNew(input);
+    if ( lxr == NULL ) {
+        fprintf(stderr, "Unable to create the lexer due to malloc() failure1\n");
+        exit(1);
+    }
+
+    pANTLR3_COMMON_TOKEN_STREAM tstream = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
+    if (tstream == NULL) {
+	fprintf(stderr, "Out of memory trying to allocate token stream\n");
+	exit(1);
+    }
+
+    pProtoJSParser ctx;
+    pProtoJSParser psr = ctx = ProtoJSParserNew(tstream);
+    if (psr == NULL) {
+        fprintf(stderr, "Out of memory trying to allocate parser\n");
+        exit(ANTLR3_ERR_NOMEM);
+    }
+    SCOPE_TYPE(NameSpace) ns=NameSpacePush(ctx);
+    ctx->pProtoJSParser_NameSpaceTop=ns;
+    ns->filename=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
+    ns->filename->append8(SCOPE_TOP(NameSpace)->filename,(const char*)filename);
+    ns->internalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
+    ns->internalNamespace->append8(ns->internalNamespace,(const char*)outputInternalNamespace);
+    ns->externalNamespace=tstream->tstream->tokenSource->strFactory->newRaw(tstream->tstream->tokenSource->strFactory);
+    ns->externalNamespace->append8(SCOPE_TOP(NameSpace)->externalNamespace,(const char*)outputExternalNamespace);
+    if (strlen(outputExternalNamespace)) {
+        ns->externalNamespace->append8(ns->externalNamespace,".");        
+    }
+    initNameSpace(ctx,ns);
+    pANTLR3_HASH_TABLE tempTable=ns->qualifiedTypes;
+    ns->package->set8(ns->package,package);
+    ns->packageDot->set8(ns->packageDot,package);
+    ns->packageDot->append8(ns->packageDot,".");
+    ns->qualifiedTypes=typeTable;
+    ProtoJSParser_protocol_return pbjAST=psr->protocol(psr);
+    ns->qualifiedTypes=tempTable;
+    freeNameSpace(ns);
+    return pbjAST;
+}
 int main(int argc, char *argv[])
 {
     
@@ -48,7 +138,10 @@ int main(int argc, char *argv[])
             outputExternalNamespace=argv[argindex]+12;
         }
     }
-    
+    char*package=parsePackage((const char*)filename,outputInternalNamespace,outputExternalNamespace);
+    pANTLR3_HASH_TABLE qualifiedTypes=antlr3HashTableNew(11);
+    parseTypes((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace,package,qualifiedTypes);
+    parseTypes((const char*)filename,outputFilename,outputInternalNamespace,outputExternalNamespace,package,qualifiedTypes);
     input = antlr3AsciiFileStreamNew(filename);
 
     if ( input == NULL ) {
@@ -83,8 +176,9 @@ int main(int argc, char *argv[])
     if (strlen(outputExternalNamespace)) {
         SCOPE_TOP(NameSpace)->externalNamespace->append8(SCOPE_TOP(NameSpace)->externalNamespace,".");        
     }
-
+    initNameSpace(ctx,SCOPE_TOP(NameSpace));
     pbjAST=psr->protocol(psr);
+    
     if (psr->pParser->rec->getNumberOfSyntaxErrors(psr->pParser->rec) > 0)
     {
         ANTLR3_FPRINTF(stderr, "The parser returned %d errors, tree walking aborted.\n", psr->pParser->rec->getNumberOfSyntaxErrors(psr->pParser->rec));

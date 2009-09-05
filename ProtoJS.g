@@ -51,7 +51,10 @@ scope NameSpace {
     pANTLR3_STRING internalNamespace;
     pANTLR3_STRING package;
     pANTLR3_STRING packageDot;
+    pANTLR3_STRING jsPackageDefinition;
     pANTLR3_LIST imports;
+    pANTLR3_HASH_TABLE qualifiedTypes;
+    void*parent;
 }
 
 scope Symbols {
@@ -88,24 +91,21 @@ protoroot
     @init {
         initNameSpace(ctx,SCOPE_TOP(NameSpace));
     }
-	:	importrule* (package importrule*)? message*
+	:	(importrule|message)* (package (importrule|message)*)?
     {
     }
 	;
 
 package
     
-    : ( PACKAGELITERAL packagename ITEM_TERMINATOR -> IDENTIFIER[jsPackageDefine($packagename.text)->chars])
+    : ( PACKAGELITERAL packagename ITEM_TERMINATOR -> WS["\n"])
         {
-            definePackage( ctx, $NameSpace::package );
-
+            jsPackageDefine($NameSpace::jsPackageDefinition);
         }
 	;
 packagename : QUALIFIEDIDENTIFIER 
     {
-            $NameSpace::package=stringDup($QUALIFIEDIDENTIFIER.text);
-            $NameSpace::packageDot=stringDup($QUALIFIEDIDENTIFIER.text);
-            $NameSpace::packageDot->append8($NameSpace::packageDot,".");
+            definePackage( ctx, $QUALIFIEDIDENTIFIER.text);
     }
     ;
 importrule
