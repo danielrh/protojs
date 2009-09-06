@@ -54,6 +54,7 @@ scope NameSpace {
     pANTLR3_STRING jsPackageDefinition;
     pANTLR3_LIST imports;
     pANTLR3_HASH_TABLE qualifiedTypes;
+    int isPBJ;
     void*parent;
 }
 
@@ -91,11 +92,21 @@ protoroot
     @init {
         initNameSpace(ctx,SCOPE_TOP(NameSpace));
     }
-	:	(importrule|message)* (package (importrule|message)*)?
+	:	pbj_header? (importrule|message)* (package (importrule|message)*)?
     {
     }
 	;
+pbj_header : (STRING_LITERAL -> IDENTIFIER[$NameSpace::packageDot->chars] IDENTIFIER["_PBJ_Internal"] EQUALS["="] STRING_LITERAL ITEM_TERMINATOR[";"] WS["\n"])
+    {
+            if (strncmp((char*)$STRING_LITERAL.text->chars,"\"pbj-0.0.3\"",8)==0&&$STRING_LITERAL.text->chars[8]<='9'&&$STRING_LITERAL.text->chars[8]>='3') {
+                
+            }else {
 
+                fprintf(stderr,"error: line \%d: pbj version \%s not understood--this compiler understands \"pbj-0.0.3\"\n",$STRING_LITERAL->line,$STRING_LITERAL.text->chars);  
+            }
+            $NameSpace::isPBJ=1;
+    }
+    ;
 package
     
     : ( PACKAGELITERAL packagename ITEM_TERMINATOR -> WS["\n"])
@@ -270,10 +281,10 @@ field
     @init {$field::defaultValue=NULL; $field::isNumericType=0;}
     :
       ( ( (ProtoJSOPTIONAL|REQUIRED|REPEATED) (multiplicitive_type|field_type) field_name EQUALS field_offset (default_value|none) ITEM_TERMINATOR )  
-       -> WS["\t"] field_name COLON[":"] WS[" "] BLOCK_OPEN["{"] WS["\n\t\t"] IDENTIFIERCOLON["default_value:"] WS[" "] default_value none COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["multiplicity:"] WS[" "] QUALIFIEDIDENTIFIER["PROTO."] ProtoJSOPTIONAL REQUIRED REPEATED COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["type:"] WS[" "] IDENTIFIER["function"] PAREN_OPEN["("]PAREN_CLOSE[")"] BLOCK_OPEN["{"] IDENTIFIER["return"] WS[" "] multiplicitive_type field_type ITEM_TERMINATOR[";"] BLOCK_CLOSE["}"] COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["id:"] WS[" "] field_offset WS["\n\t"] BLOCK_CLOSE["}"] COMMA[","] WS["\n"])
+       -> WS["\t"] field_name COLON[":"] WS[" "] BLOCK_OPEN["{"] WS["\n\t\t"] IDENTIFIERCOLON["options:"] WS[" "] default_value none COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["multiplicity:"] WS[" "] QUALIFIEDIDENTIFIER["PROTO."] ProtoJSOPTIONAL REQUIRED REPEATED COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["type:"] WS[" "] IDENTIFIER["function"] PAREN_OPEN["("]PAREN_CLOSE[")"] BLOCK_OPEN["{"] IDENTIFIER["return"] WS[" "] multiplicitive_type field_type ITEM_TERMINATOR[";"] BLOCK_CLOSE["}"] COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["id:"] WS[" "] field_offset WS["\n\t"] BLOCK_CLOSE["}"] COMMA[","] WS["\n"])
     { 
         if (($REQUIRED||$REPEATED)&&$field::defaultValue&&$field::defaultValue->len) {
-           fprintf(stderr,"ERROR on line BLEH: default not allowed for repeated or optional elements in field \%s : \%s\n",$field::fieldName->chars,$field::defaultValue->chars);
+           fprintf(stderr,"error: line \%d: default not allowed for repeated or optional elements in field \%s : \%s\n",$ITEM_TERMINATOR.line,$field::fieldName->chars,$field::defaultValue->chars);
         }
         defineField(ctx, $field::fieldType,$field::fieldName,$field::defaultValue,$field::fieldOffset,$REPEATED==NULL,$REQUIRED!=NULL,0);
         stringFree($field::fieldName);
@@ -281,7 +292,7 @@ field
         stringFree($field::defaultValue);
     }
 	;
-none : (DOT?)->IDENTIFIER["null"] ;
+none : (DOT?)->IDENTIFIER["{}"] ;
 field_offset
     : integer
     {
@@ -342,11 +353,38 @@ array_spec
 	;
 
 default_value
-	:	(SQBRACKET_OPEN DEFAULT EQUALS default_literal_value SQBRACKET_CLOSE -> STRING_LITERAL[$default_literal_value.text->setS($default_literal_value.text,$field::defaultValue)])
-    {
+	:	
+    (SQBRACKET_OPEN option_pairs SQBRACKET_CLOSE -> 
+     {$NameSpace::isPBJ}?  BLOCK_OPEN["{"] option_pairs COMMA[","] IDENTIFIER["packed"] COLON[":"] BOOL_LITERAL["true"] BLOCK_CLOSE["}"]
+     ->  BLOCK_OPEN["{"] option_pairs BLOCK_CLOSE["}"])
+    ;
 
-    }
-	;
+option_pairs 
+    : 
+    option_pair (COMMA option_pair)*
+    ;
+
+option_pair 
+    scope {pANTLR3_STRING literalValue;}
+    : 
+    (DEFAULT EQUALS default_literal_value -> DEFAULT["default_value"] COLON[":"] STRING_LITERAL[$default_literal_value.text->setS($default_literal_value.text,$field::defaultValue)])
+    |
+    (IDENTIFIER EQUALS option_literal_value 
+       -> {strcmp((char*)$IDENTIFIER.text->chars,"packed")==0&&$NameSpace::isPBJ}? 
+           IDENTIFIER["_packed"] COLON[":"] BOOL_LITERAL["true"]
+       -> IDENTIFIER COLON[":"] STRING_LITERAL[$option_pair.text->setS($option_pair.text,$option_pair::literalValue)])
+  {
+     if (strcmp((char*)$IDENTIFIER.text->chars,"packed")==0&&$NameSpace::isPBJ) {
+         fprintf(stderr,"error: line \%d: packed not allowed in pbj, forcing true, overriding _packed in \%s : \%s\n",$IDENTIFIER.line,$Symbols::message->chars, $field::fieldName->chars);
+     }
+  }
+  ;
+
+option_literal_value : literal_value {
+        $option_pair::literalValue=defaultValuePreprocess(ctx, NULL, $literal_value.text);
+   }
+   ;
+
 default_literal_value : literal_value
   {
         $field::defaultValue=defaultValuePreprocess(ctx, $field::fieldType, $literal_value.text);

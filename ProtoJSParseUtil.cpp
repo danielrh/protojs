@@ -87,6 +87,7 @@ void  freeNameSpace(SCOPE_TYPE(NameSpace) symtab) {
     //delete symtab->output->cpp;    
 }
 void  initNameSpace(pProtoJSParser ctx, SCOPE_TYPE(NameSpace) symtab) {
+    symtab->isPBJ=0;
     if (SCOPE_SIZE(NameSpace)>1) {
         SCOPE_TYPE(NameSpace) lowerNamespace;
         symtab->parent=lowerNamespace;
