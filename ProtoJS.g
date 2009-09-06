@@ -98,7 +98,7 @@ protoroot
 	;
 pbj_header : (STRING_LITERAL -> IDENTIFIER[$NameSpace::packageDot->chars] IDENTIFIER["_PBJ_Internal"] EQUALS["="] STRING_LITERAL ITEM_TERMINATOR[";"] WS["\n"])
     {
-            if (strncmp((char*)$STRING_LITERAL.text->chars,"\"pbj-0.0.3\"",8)==0&&$STRING_LITERAL.text->chars[8]<='9'&&$STRING_LITERAL.text->chars[8]>='3') {
+            if (strncmp((char*)$STRING_LITERAL.text->chars,"\"pbj-0.0.3\"",9)==0&&$STRING_LITERAL.text->chars[9]<='9'&&$STRING_LITERAL.text->chars[9]>='3') {
                 
             }else {
 
