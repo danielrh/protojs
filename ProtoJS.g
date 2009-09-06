@@ -123,8 +123,8 @@ message
     }
     :   ( message_or_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE 
            -> {ctx->pProtoJSParser_SymbolsStack_limit<=1}?
-                  IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] message_identifier QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
-                  -> message_identifier WS[" "] COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] message_identifier QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
+                  IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_or_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
+                  -> message_identifier WS[" "] COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_or_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
         {
             if(!$message::isExtension) {
                 defineType( ctx, $message::messageName ,TYPE_ISMESSAGE);
@@ -318,7 +318,7 @@ field_type
        $field::isNumericType=0;
        $field::fieldType=stringDup($advanced_array_type.text);
     }
-    | ( IDENTIFIER ->  IDENTIFIER[qualifyType( ctx, $IDENTIFIER.text )] )
+    | ( IDENTIFIER ->  IDENTIFIER[qualifyType( ctx, $IDENTIFIER.text, $IDENTIFIER.text )] )
     {
        $field::isNumericType=(isEnum(ctx,$IDENTIFIER.text)||
                               isFlag(ctx,$IDENTIFIER.text));

@@ -188,11 +188,11 @@ std::string findSymbol(pProtoJSParser ctx, std::string nameSpace, std::string id
     }while (true);
     return identifier;
 }
-const char* qualifyType(pProtoJSParser ctx, pANTLR3_STRING identifier){
+const char* qualifyType(pProtoJSParser ctx, pANTLR3_STRING retvalStorage, pANTLR3_STRING identifier){
     std::string retval=currentNamespace(ctx);
     retval=findSymbol(ctx,retval,(const char*)identifier->chars);
-    identifier->set8(identifier,retval.c_str());
-    return (const char*)identifier->chars;
+    retvalStorage->set8(retvalStorage,retval.c_str());
+    return (const char*)retvalStorage->chars;
 }
 std::string qualifyStringType(pProtoJSParser ctx, pANTLR3_STRING identifier){
     std::string retval=currentNamespace(ctx);
@@ -288,7 +288,6 @@ void defineType(pProtoJSParser ctx, pANTLR3_STRING id,MessageFlagOrEnum messageF
     qualifiedType->appendS(qualifiedType,id);
     char * qtyp=strdup((const char*)qualifiedType->chars);
     SCOPE_TOP(NameSpace)->qualifiedTypes->put(SCOPE_TOP(NameSpace)->qualifiedTypes,qtyp,messageFlagOrEnum==TYPE_ISMESSAGE?gMessageType:(messageFlagOrEnum==TYPE_ISFLAG?gFlagType:gEnumType),NULL);
-    printf ("Putting %s into type set\n",qtyp);
 }
 
 
