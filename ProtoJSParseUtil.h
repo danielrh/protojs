@@ -54,11 +54,17 @@ typedef struct CsStreams CsStreamOutput;
 void initSymbolTable(SCOPE_TYPE(Symbols) symtab, pANTLR3_STRING msgId, int isExtension);
 void initNameSpace(pProtoJSParser ctx, SCOPE_TYPE(NameSpace) symtab);
 void freeNameSpace(SCOPE_TYPE(NameSpace) symtab);
+const char* qualifyType(pProtoJSParser ctx, pANTLR3_STRING identifier);
 
 pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id, pANTLR3_STRING package);
 void definePackage(pProtoJSParser ctx, pANTLR3_STRING id);
 void defineImport(pProtoJSParser ctx, pANTLR3_STRING filename);
-void defineType(pProtoJSParser ctx, pANTLR3_STRING id);
+typedef enum _MessageFlagOrEnum{
+    TYPE_ISMESSAGE,
+    TYPE_ISENUM,
+    TYPE_ISFLAG
+} MessageFlagOrEnum;
+void defineType(pProtoJSParser ctx, pANTLR3_STRING id,MessageFlagOrEnum);
 void defineMessage(pProtoJSParser ctx, pANTLR3_STRING id);
 void defineMessageEnd(pProtoJSParser ctx, pANTLR3_STRING id);
 void defineExtensionRange(pProtoJSParser ctx, pANTLR3_STRING extension_start, pANTLR3_STRING extension_end);
@@ -67,6 +73,10 @@ void defineExtension(pProtoJSParser ctx, pANTLR3_STRING id);
 void defineExtensionEnd(pProtoJSParser ctx, pANTLR3_STRING id);
 void defineEnumValue(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING enumName, pANTLR3_LIST enumList, pANTLR3_STRING id,  pANTLR3_STRING value);
 void defineFlagValue(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING flagName, pANTLR3_LIST flagList, pANTLR3_STRING id,  pANTLR3_STRING value);
+
+int isEnum(pProtoJSParser ctx, pANTLR3_STRING identifier);
+int isFlag(pProtoJSParser ctx, pANTLR3_STRING identifier);
+
 void defineEnum(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING id, pANTLR3_LIST enumList);
 void defineFlag(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING id, pANTLR3_LIST flagLis, unsigned int bits);
 void defineField(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING name, pANTLR3_STRING value, unsigned int field_offset, int notRepeated, int isRequired, int multiplicitive_advanced_type);

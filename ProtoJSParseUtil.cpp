@@ -38,6 +38,13 @@
 #include <iostream>
 #include <string.h>
 
+int gMessageTypeInt=0;
+int gFlagTypeInt=1;
+int gEnumTypeInt=2;
+void * gMessageType=&gMessageTypeInt;
+void * gFlagType=&gFlagTypeInt;
+void * gEnumType=&gEnumTypeInt;
+
 void  freeSymbolTable(SCOPE_TYPE(Symbols) symtab) {
     symtab->types->free(symtab->types);
     symtab->flag_sizes->free(symtab->flag_sizes);
@@ -154,6 +161,55 @@ pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id, pANTLR3_STRING id_package){
     }
     return id;
 }
+
+std::string currentNamespace(pProtoJSParser ctx) {
+    std::string retval((const char*)SCOPE_TOP(NameSpace)->packageDot->chars);
+    for (int i = 0; i < (int)SCOPE_SIZE(Symbols)-1 ; ++i) {
+        retval+=(const char*)((SCOPE_TYPE(Symbols))SCOPE_INSTANCE(Symbols,i))->message->chars;
+        retval+='.';
+    }
+    return retval;
+}
+std::string findSymbol(pProtoJSParser ctx, std::string nameSpace, std::string identifier) {
+    do {
+        std::string retval = nameSpace+identifier;
+        if (SCOPE_TOP(NameSpace)->qualifiedTypes->get(SCOPE_TOP(NameSpace)->qualifiedTypes,(void*)retval.c_str())!=NULL) {
+            return retval;
+        }
+        if(nameSpace.length()&&nameSpace[nameSpace.length()-1]=='.') {
+            nameSpace=nameSpace.substr(0,nameSpace.length()-1);
+        }
+        std::string::size_type where=nameSpace.find_last_of('.');
+        if (where!=std::string::npos) {
+            nameSpace=nameSpace.substr(0,where+1);
+        }else {
+            break;
+        }
+    }while (true);
+    return identifier;
+}
+const char* qualifyType(pProtoJSParser ctx, pANTLR3_STRING identifier){
+    std::string retval=currentNamespace(ctx);
+    retval=findSymbol(ctx,retval,(const char*)identifier->chars);
+    identifier->set8(identifier,retval.c_str());
+    return (const char*)identifier->chars;
+}
+std::string qualifyStringType(pProtoJSParser ctx, pANTLR3_STRING identifier){
+    std::string retval=currentNamespace(ctx);
+    return findSymbol(ctx,retval,(const char*)identifier->chars);
+}
+int isEnum(pProtoJSParser ctx, pANTLR3_STRING identifier) {
+    std::string qst=qualifyStringType(ctx,identifier);
+    int retval=SCOPE_TOP(NameSpace)->qualifiedTypes->get(SCOPE_TOP(NameSpace)->qualifiedTypes,(void*)qst.c_str())==gEnumType;
+    return retval;
+}
+int isFlag(pProtoJSParser ctx, pANTLR3_STRING identifier) {
+    std::string qst=qualifyStringType(ctx,identifier);
+    int retval=SCOPE_TOP(NameSpace)->qualifiedTypes->get(SCOPE_TOP(NameSpace)->qualifiedTypes,(void*)qst.c_str())==gFlagType;
+    return retval;
+}
+
+
 void  definePackage(pProtoJSParser ctx, pANTLR3_STRING id) {    
     if (id==NULL) {
         if (SCOPE_TOP(NameSpace)->externalNamespace&&SCOPE_TOP(NameSpace)->externalNamespace->len) {
@@ -221,7 +277,7 @@ void defineImport(pProtoJSParser ctx, pANTLR3_STRING filename) {
     }
 }
 
-void defineType(pProtoJSParser ctx, pANTLR3_STRING id) {
+void defineType(pProtoJSParser ctx, pANTLR3_STRING id,MessageFlagOrEnum messageFlagOrEnum) {
     if (SCOPE_TOP(Symbols) == NULL) return;
     SCOPE_TOP(Symbols)->types->put(SCOPE_TOP(Symbols)->types, id->chars, id, NULL);
     pANTLR3_STRING qualifiedType=stringDup(SCOPE_TOP(NameSpace)->packageDot);
@@ -231,7 +287,7 @@ void defineType(pProtoJSParser ctx, pANTLR3_STRING id) {
     }
     qualifiedType->appendS(qualifiedType,id);
     char * qtyp=strdup((const char*)qualifiedType->chars);
-    SCOPE_TOP(NameSpace)->qualifiedTypes->put(SCOPE_TOP(NameSpace)->qualifiedTypes,qtyp,qtyp,&free);
+    SCOPE_TOP(NameSpace)->qualifiedTypes->put(SCOPE_TOP(NameSpace)->qualifiedTypes,qtyp,messageFlagOrEnum==TYPE_ISMESSAGE?gMessageType:(messageFlagOrEnum==TYPE_ISFLAG?gFlagType:gEnumType),NULL);
     printf ("Putting %s into type set\n",qtyp);
 }
 
@@ -690,8 +746,8 @@ const char *getCsType(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING em
         return "ProtoJS.BoundingBox3f3f";
     if (strcmp((char*)type->chars,"boundingbox3d3f")==0)
         return "ProtoJS.BoundingBox3d3f";
-    int isEnum = SCOPE_TOP(Symbols)->enum_sizes->get(SCOPE_TOP(Symbols)->enum_sizes,type->chars)!=NULL;
-    int isFlag = SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,type->chars)!=NULL;
+    int isEnum = ::isEnum(ctx,type);
+    int isFlag = ::isFlag(ctx,type);
 
     int isSubMessage=((SCOPE_TOP(Symbols)->types->get(SCOPE_TOP(Symbols)->types,type->chars)!=NULL)&&!isEnum)&&!isFlag;    
     if (isSubMessage||isEnum||isFlag) {
@@ -1353,7 +1409,7 @@ void defineEnum(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING i
     int i,*maxval=(int*)malloc(sizeof(int));
     *maxval=0;
     if (SCOPE_TOP(Symbols) == NULL) return;
-    defineType(ctx,id);
+    defineType(ctx,id,TYPE_ISENUM);
     if (CPPFP) {
         printEnum(ctx,1,id,enumValues);
     }
@@ -1377,7 +1433,7 @@ void defineFlag(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING i
     unsigned int* bits=(unsigned int *)malloc(sizeof(unsigned int));
     *bits=flagBits;
     if (SCOPE_TOP(Symbols) == NULL) return;
-    defineType(ctx, id);
+    defineType(ctx, id,TYPE_ISFLAG);
     if (CPPFP) {
         printEnum(ctx,1,id,flagValues);
     }

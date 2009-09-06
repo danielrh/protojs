@@ -127,7 +127,7 @@ message
                   -> message_identifier WS[" "] COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] message_identifier QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
         {
             if(!$message::isExtension) {
-                defineType( ctx, $message::messageName );
+                defineType( ctx, $message::messageName ,TYPE_ISMESSAGE);
             }
             stringFree($message::messageName);
         }
@@ -318,20 +318,10 @@ field_type
        $field::isNumericType=0;
        $field::fieldType=stringDup($advanced_array_type.text);
     }
-    | ( IDENTIFIER
-        -> {SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)!=NULL
-            && *(unsigned int*)SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)<28}?
-              UINT32["uint32"] 
-        -> {SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)!=NULL
-            && *(unsigned int*)SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)<=32}?
-              UINT32["uint32"] 
-        -> {SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)!=NULL
-            && *(unsigned int*)SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)==64}?
-             UINT64["uint64"] 
-        -> QUALIFIEDIDENTIFIER[$NameSpace::packageDot->chars] IDENTIFIER )
+    | ( IDENTIFIER ->  IDENTIFIER[qualifyType( ctx, $IDENTIFIER.text )] )
     {
-       $field::isNumericType=(SCOPE_TOP(Symbols)->flag_sizes->get(SCOPE_TOP(Symbols)->flag_sizes,$IDENTIFIER.text->chars)!=NULL||
-                                SCOPE_TOP(Symbols)->enum_sizes->get(SCOPE_TOP(Symbols)->enum_sizes,$IDENTIFIER.text->chars)!=NULL);
+       $field::isNumericType=(isEnum(ctx,$IDENTIFIER.text)||
+                              isFlag(ctx,$IDENTIFIER.text));
        $field::fieldType=stringDup($IDENTIFIER.text);
     }
     ;
