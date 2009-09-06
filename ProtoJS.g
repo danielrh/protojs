@@ -318,12 +318,16 @@ field_type
        $field::isNumericType=0;
        $field::fieldType=stringDup($advanced_array_type.text);
     }
-    | ( IDENTIFIER ->  IDENTIFIER[qualifyType( ctx, $IDENTIFIER.text, $IDENTIFIER.text )] )
+    | ( type_identifier ->  QUALIFIEDIDENTIFIER[qualifyType( ctx, $type_identifier.text, $type_identifier.text )] )
     {
-       $field::isNumericType=(isEnum(ctx,$IDENTIFIER.text)||
-                              isFlag(ctx,$IDENTIFIER.text));
-       $field::fieldType=stringDup($IDENTIFIER.text);
+       $field::isNumericType=(isEnum(ctx,$type_identifier.text)||
+                              isFlag(ctx,$type_identifier.text));
+       $field::fieldType=stringDup($type_identifier.text);
     }
+    ;
+
+type_identifier
+    : IDENTIFIER | QUALIFIEDIDENTIFIER
     ;
 multiplicitive_type
     : 
