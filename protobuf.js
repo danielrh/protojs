@@ -374,13 +374,13 @@ PROTO.array =
                     throw "Called add(undefined) for a non-composite";
                 }
             }
-            SUPER.push(this.datatype_.valueOf(value));
+            SUPER.push(this.datatype_.Convert(value));
         }
         return ProtoArray;
     })();
 
 PROTO.string = {
-    valueOf: function(str) {
+    Convert: function(str) {
         return String.valueOf(str);
     },
     wiretype: PROTO.wiretypes.lengthdelim,
@@ -396,7 +396,7 @@ PROTO.string = {
 };
 
 PROTO.bytes = {
-    valueOf: function(arr) {
+    Convert: function(arr) {
         if (arr instanceof Array) {
             return arr;
         } else {
@@ -416,9 +416,9 @@ PROTO.bytes = {
 };
 
 (function() {
-    function makeclass(valueOf, serializer, parser) {
+    function makeclass(converter, serializer, parser) {
         var myclass = {
-            valueOf: valueOf,
+            Convert: converter,
             wiretype: 0,
             SerializeToStream: serializer,
             ParseFromStream: parser,
@@ -426,7 +426,7 @@ PROTO.bytes = {
         };
         return myclass;
     };
-    function valueOfU32(n) { //unsigned
+    function convertU32(n) { //unsigned
         if (n == NaN) {
             throw "not a number: "+str;
         }
@@ -439,7 +439,7 @@ PROTO.bytes = {
         }
         return n;
     };
-    function valueOfS32(n) { // signed
+    function convertS32(n) { // signed
         if (n == NaN) {
             throw "not a number: "+str;
         }
@@ -523,15 +523,15 @@ PROTO.bytes = {
         }
         return n / 2;
     }
-    PROTO.sfixed32 = makeclass(valueOfS32, serializeFixed32, parseSFixed32);
-    PROTO.fixed32 = makeclass(valueOfU32, serializeFixed32, parseFixed32);
+    PROTO.sfixed32 = makeclass(convertS32, serializeFixed32, parseSFixed32);
+    PROTO.fixed32 = makeclass(convertU32, serializeFixed32, parseFixed32);
     PROTO.sfixed32.wiretype = PROTO.wiretypes.fixed32;
     PROTO.fixed32.wiretype = PROTO.wiretypes.fixed32;
-    PROTO.int32 = makeclass(valueOfS32, serializeInt32, parseInt32);
-    PROTO.sint32 = makeclass(valueOfS32, serializeSInt32, parseSInt32);
-    PROTO.uint32 = makeclass(valueOfU32, serializeInt32, parseUInt32);
+    PROTO.int32 = makeclass(convertS32, serializeInt32, parseInt32);
+    PROTO.sint32 = makeclass(convertS32, serializeSInt32, parseSInt32);
+    PROTO.uint32 = makeclass(convertU32, serializeInt32, parseUInt32);
 
-    function valueOf64(n) {
+    function convert64(n) {
         if (n instanceof PROTO.I64) {
             return n;
         }
@@ -552,17 +552,17 @@ PROTO.bytes = {
     function serializeFixed64(n, stream) {
         SerializeSFixed64(n.convertToUnsigned(), stream);
     }
-    PROTO.sfixed64 = makeclass(valueOf64, serializeSFixed64, null);
-    PROTO.fixed64 = makeclass(valueOf64, serializeFixed64, null);
+    PROTO.sfixed64 = makeclass(convert64, serializeSFixed64, null);
+    PROTO.fixed64 = makeclass(convert64, serializeFixed64, null);
     PROTO.sfixed64.wiretype = PROTO.wiretypes.fixed64;
     PROTO.fixed64.wiretype = PROTO.wiretypes.fixed64;
-    PROTO.int64 = makeclass(valueOf64, serializeInt64, null);
-    PROTO.sint64 = makeclass(valueOf64, serializeSInt64, null);
-    PROTO.uint64 = makeclass(valueOf64, serializeUInt64, null);
+    PROTO.int64 = makeclass(convert64, serializeInt64, null);
+    PROTO.sint64 = makeclass(convert64, serializeSInt64, null);
+    PROTO.uint64 = makeclass(convert64, serializeUInt64, null);
 
     PROTO.bool = makeclass(function(bool) {return bool?true:false;}, serializeInt32, parseUInt32);
 
-    function valueOfFloatingPoint(f) {
+    function convertFloatingPoint(f) {
         var n = parseFloat(f);
         if (n == NaN) {
             throw "not a number: "+f;
@@ -583,8 +583,8 @@ PROTO.bytes = {
         var arr = stream.read(8);
         return PROTO.binaryParser.toDouble(arr);
     };
-    PROTO.float = makeclass(valueOfFloatingPoint, serializeFloat, parseFloat);
-    PROTO.double = makeclass(valueOfFloatingPoint, serializeDouble, parseDouble);
+    PROTO.float = makeclass(convertFloatingPoint, serializeFloat, parseFloat);
+    PROTO.double = makeclass(convertFloatingPoint, serializeDouble, parseDouble);
     PROTO.float.wiretype = PROTO.wiretypes.fixed32;
     PROTO.double.wiretype = PROTO.wiretypes.fixed64;
 })();
@@ -625,7 +625,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
                     var bas = new PROTO.ByteArrayStream(bytearr);
                     for (var j = 0; j < bytearr.length && bas.valid(); j++) {
                         var toappend = nextprop.type().ParseFromStream(bas);
-                        values[nextpropname].push(nextprop.type().valueOf(toappend));
+                        values[nextpropname].push(nextprop.type().Convert(toappend));
                         readpos += diff;
                         len -= diff;
                     }
@@ -646,9 +646,9 @@ PROTO.mergeProperties = function(properties, stream, values) {
         }
         if (nextval !== undefined) {
             if (nextprop.multiplicity === PROTO.repeated) {
-                values[nextpropname].push(nextprop.type().valueOf(nextval));
+                values[nextpropname].push(nextprop.type().Convert(nextval));
             } else {
-                values[nextpropname] = nextprop.type().valueOf(nextval);
+                values[nextpropname] = nextprop.type().Convert(nextval);
             }
         }
     }
@@ -673,7 +673,7 @@ PROTO.serializeProperty = function(property, stream, value) {
             var bytearr = new Array();
             var bas = new PROTO.ByteArrayStream(bytearr); // Don't know length beforehand.
             for (var i = 0; i < value.length; i++) {
-                var val = property.valueOf(value[i]);
+                var val = property.type().Convert(value[i]);
                 PROTO.array.SerializeToStream(val, bas);
             }
             wireId = fid * 8 + PROTO.wiretypes.lengthdelim;
@@ -682,13 +682,13 @@ PROTO.serializeProperty = function(property, stream, value) {
         } else {
             for (var i = 0; i < value.length; i++) {
                 PROTO.int32.SerializeToStream(wireId, stream);
-                var val = property.valueOf(value[i]);
+                var val = property.type().Convert(value[i]);
                 property.type().SerializeToStream(val, stream);
             }
         }
     } else {
         PROTO.int32.SerializeToStream(wireId, stream);
-        var val = property.valueOf(value);
+        var val = property.type().Convert(value);
         property.type().SerializeToStream(val, stream);
     }
 };
@@ -721,9 +721,9 @@ PROTO.Message = function(name, properties) {
     Composite.IsInitialized = function(value) {
         return value && value.IsInitialized();
     };
-    Composite.valueOf = function valueOf(val) {
+    Composite.Convert = function Convert(val) {
         if (!(val instanceof Composite)) {
-            throw "Value not instanceof "+name+": "+val;
+            throw "Value not instanceof "+name+": "+typeof(val)+" : "+val;
         }
         return val;
     };
@@ -736,6 +736,15 @@ PROTO.Message = function(name, properties) {
         return ret;
     };
     Composite.prototype = {
+        computeHasFields: function computeHasFields() {
+            for (var key in this.properties_) {
+                if (this.HasField(key)) {
+                    this.has_fields_[key] = true;
+                } else {
+                    delete this.has_fields_[key];
+                }
+            }
+        },
         Clear: function Clear() {
             for (var prop in this.properties_) {
                 this.ClearField(prop);
@@ -767,6 +776,7 @@ PROTO.Message = function(name, properties) {
             PROTO.mergeProperties(this.properties_, stream, this.values_);
         },
         SerializeToStream: function Serialize(outstream) {
+            this.computeHasFields();
             for (var key in this.has_fields_) {
                 var val = this.values_[key];
                 PROTO.serializeProperty(this.properties_[key], outstream, val);
@@ -776,14 +786,14 @@ PROTO.Message = function(name, properties) {
         // CopyFrom, MergeFrom, RegisterExtension, SerializePartialToX, IsInitialized??, Extensions, ClearExtension
         ClearField: function ClearField(propname) {
             var descriptor = this.properties_[propname];
-            this.has_fields_[propname] = undefined;
+            delete this.has_fields_[propname];
             if (descriptor.multiplicity == PROTO.repeated) {
                 this.values_[propname] = new PROTO.array(this.properties_[propname]);
             } else {
                 if (descriptor.type() && descriptor.type().composite) {
-                    this.values_[propname] = new this.properties_[propname].type();
+                    this.values_[propname] = new (this.properties_[propname].type())();
                 } else {
-                    this.values_[propname] = undefined;
+                    delete this.values_[propname];
                 }
             }
         },
@@ -801,7 +811,7 @@ PROTO.Message = function(name, properties) {
             if (value === undefined) {
                 ClearField(this.values_[propname]);
             } else {
-                this.values_[propname] = this.datatype_.valueOf(value);
+                this.values_[propname] = this.properties_[propname].type().Convert(value);
                 this.has_fields_[propname] = true;
             }
         },
@@ -880,7 +890,7 @@ PROTO.Enum = function (name, values) {
     enumobj.values = values;
     enumobj.reverseValues = reverseValues;
 
-    enumobj.valueOf = function valueOf(s) {
+    enumobj.Convert = function Convert(s) {
         if (typeof s == 'number') {
             // (reverseValues[s] !== undefined)
             return s;
