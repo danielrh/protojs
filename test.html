@@ -34,7 +34,13 @@ window.onload = function() {
   output.value += "-4294967396-8589934602 = "+NoneHundred.sub(twoTen).toNumber()+"\n";
   var flt=2350.2352355552;
   output.value += flt + ": "+PROTO.binaryParser.fromDouble(flt)+" back "+PROTO.binaryParser.toDouble(PROTO.binaryParser.fromDouble(flt))+"\n";
-  output.value += Sirikata.PB.ExternalMessage;
+  var arr = [];
+  var stream = new PROTO.ByteArrayStream(arr);
+  var extmsg = new Sirikata.PB.ExternalMessage();
+  extmsg.is_true = true;
+  output.value += extmsg.toString();
+  extmsg.SerializeToStream(stream);
+  output.value += "ExternalMessage.is_true: Serializes to ["+arr.toString()+"]";
 };
 </script>
 </head>
