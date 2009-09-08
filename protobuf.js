@@ -7,6 +7,9 @@ PROTO.wiretypes = {
     fixed32: 5,
 };
 
+PBJ = PROTO;
+PBJ.duration = PBJ.int32;
+
 PROTO.optional = 'optional';
 PROTO.repeated = 'repeated';
 PROTO.required = 'required';
@@ -696,13 +699,7 @@ PROTO.serializeProperty = function(property, stream, value) {
 
 PROTO.Message = function(name, properties) {
     Composite = function() {
-        this.properties_ = {};
-        for (var key in properties) {
-            if (properties[key].composite) {
-                continue; // HACK: classes included alongside properties.
-            }
-            this.properties_[key] = properties[key];
-        }
+        this.properties_ = Composite.properties_;
         if (!window.DefineProperty) {
             this.values_ = this;
         } else {
@@ -712,12 +709,18 @@ PROTO.Message = function(name, properties) {
         this.Clear();
         this.message_type_ = name;
     };
+    Composite.properties_ = {};
     for (var key in properties) {
-        if (properties[key].composite) {
+        if (properties[key].isType) {
+            continue; // HACK: classes included alongside properties.
+        }
+        Composite.properties_[key] = properties[key];
+        if (properties[key].isType) {
             Composite[key] = properties[key]; // HACK: classes included alongside properties.
         }
     }
-    Composite.composite = name;
+    Composite.isType = true;
+    Composite.composite = true;
     Composite.IsInitialized = function(value) {
         return value && value.IsInitialized();
     };
@@ -876,14 +879,14 @@ PROTO.Message = function(name, properties) {
         }
     }
     return Composite;
-}
-
+};
 
 PROTO.Enum = function (name, values) {
     var reverseValues = {};
     var enumobj = {};
+    enumobj.isType = true;
     for (var key in values) {
-        reversevalues[values[key] ] = key;
+        reverseValues[values[key] ] = key;
         enumobj[key] = values[key];
         enumobj[values[key]] = key;
     }
@@ -911,5 +914,12 @@ PROTO.Enum = function (name, values) {
     enumobj.wiretype = PROTO.wiretypes.varint;
 
     return enumobj;
-}
+};
+PROTO.Flags = function(bits, name, values) { return PROTO.Enum(bits, name, values); };
 
+PROTO.Extend = function(parent, newproperties) {
+    for (var key in newproperties) {
+        parent.properties_[key] = newproperties[key];
+    }
+    return parent;
+};

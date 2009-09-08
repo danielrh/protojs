@@ -2,7 +2,7 @@
 <html>
 <head>
 <script type="text/javascript" src="protobuf.js"></script>
-<script type="text/javascript" src="output.proto"></script>
+<script type="text/javascript" src="Test.pbj.js"></script>
 <script type="text/javascript">
 window.onload = function() {
   var my64 = new PROTO.I64(2147483647,2147483648,-1);
@@ -40,7 +40,31 @@ window.onload = function() {
   extmsg.is_true = true;
   output.value += extmsg.toString();
   extmsg.SerializeToStream(stream);
-  output.value += "ExternalMessage.is_true: Serializes to ["+arr.toString()+"]";
+  output.value += "ExternalMessage.is_true: Serializes to ["+arr.toString()+"]\n";
+  extmsg = new Sirikata.PB.TestMessage;
+  arr2 = new Array;
+  stream = new PROTO.ByteArrayStream(arr2);
+  extmsg.xxd = 3.14159265358979323846264;
+  extmsg.xxf = .12345678
+  extmsg.xxff.push(1);
+  extmsg.xxff.push(123456789123456789);
+  extmsg.xxff.push(-1.345e-50);
+  extmsg.xxfr = .1;
+  extmsg.xxs = ("\u59cb");
+  extmsg.xxss.push("Hello world!");
+  extmsg.xxss.push("Brought to you by \u30b7\u30ea\u30ab\u30bf");
+  extmsg.xxbb.push([1,2,3,4,5,6,7,8,255,254,253,252,251,250,249,248]);
+  extmsg.xxb = arr;
+  extmsg.f32 = Sirikata.PB.TestMessage.Flagsf32.WE | Sirikata.PB.TestMessage.Flagsf32.IMAGE;
+  extmsg.e32 = 'WEB1';
+  extmsg.submes.subduration = 1234567;
+  extmsg.submessers.add().subduration = 1;
+  extmsg.submessers.add().subduration = 2;
+  extmsg.submessers.add().subduration = 3;
+  extmsg.extmesser.is_true = false;
+  output.value += extmsg;
+  extmsg.SerializeToStream(stream);
+  output.value += "\n TestMessage encoded is:\n["+arr2+"]\n";
 };
 </script>
 </head>

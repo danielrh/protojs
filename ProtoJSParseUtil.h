@@ -89,6 +89,7 @@ void ANTLR3_CDECL freeSymbolTable(SCOPE_TYPE(Symbols) symtab);
 void ANTLR3_CDECL stringFree(void *s);
 void grammarToString(pANTLR3_TREE_NODE_STREAM node_stream, pANTLR3_BASE_TREE base, pANTLR3_BASE_TREE stop, pANTLR3_STRING bufOutput);
 pANTLR3_STRING ANTLR3_CDECL stringDup(pANTLR3_STRING s);
+pANTLR3_STRING ANTLR3_CDECL stringSet(pANTLR3_STRING s,pANTLR3_STRING other);
 pANTLR3_STRING defaultValuePreprocess(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING value);
 ANTLR3_BOOLEAN isTypeName(pProtoJSParser ctx, pANTLR3_UINT8 name);
 #ifdef __cplusplus

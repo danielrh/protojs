@@ -132,10 +132,19 @@ message
         int isExtension;
         pANTLR3_STRING messageName;
     }
-    :   ( message_or_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE 
+    :   ( message_not_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE 
            -> {ctx->pProtoJSParser_SymbolsStack_limit<=1}?
-                  IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_or_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
-                  -> message_identifier WS[" "] COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_or_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
+                  IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_not_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
+                  -> message_identifier WS[" "] COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_not_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
+        {
+            if(!$message::isExtension) {
+                defineType( ctx, $message::messageName ,TYPE_ISMESSAGE);
+            }
+            stringFree($message::messageName);
+        }
+
+        |   ( extend_not_message message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE 
+           -> IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Extend"] PAREN_OPEN["("] QUALIFIEDIDENTIFIER[qualifyType(ctx,$extend_not_message.text,$message_identifier.text)] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"] )
         {
             if(!$message::isExtension) {
                 defineType( ctx, $message::messageName ,TYPE_ISMESSAGE);
@@ -144,9 +153,11 @@ message
         }
 	;
 
-message_or_extend : 
+message_not_extend : 
         MESSAGE {$message::isExtension=0;}
-        |
+        ;
+
+extend_not_message : 
         EXTEND {$message::isExtension=1;}
         ;
 
@@ -215,7 +226,7 @@ enum_def
     @init {
         $enum_def::enumList=antlr3ListNew(1);
     }
-	:	( ENUM enum_identifier BLOCK_OPEN enum_element+ BLOCK_CLOSE -> WS["\t"] enum_identifier COLON[":"] WS[" "] BLOCK_OPEN WS["\n"] (WS["\t"] enum_element)+ WS["\t"] BLOCK_CLOSE COMMA[","]WS["\n"] )
+	:	( ENUM enum_identifier BLOCK_OPEN enum_element+ BLOCK_CLOSE -> WS["\t"] enum_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Enum"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$ENUM.text,$enum_def::enumName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] (WS["\t"] enum_element)+ WS["\t"] BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","]WS["\n"] )
         {
             defineEnum( ctx, $message::messageName, $enum_def::enumName, $enum_def::enumList);
             $enum_def::enumList->free($enum_def::enumList);
@@ -247,7 +258,7 @@ flags_def
         $flags_def::flagList=antlr3ListNew(1);
         
     }
-	:	( flags flag_identifier BLOCK_OPEN flag_element+ BLOCK_CLOSE -> WS["\t"] flag_identifier COLON[":"] WS[" "] BLOCK_OPEN WS["\n"] (WS["\t"] flag_element)+ WS["\t"] BLOCK_CLOSE COMMA[","] WS["\n"] )
+	:	( flags flag_identifier BLOCK_OPEN flag_element+ BLOCK_CLOSE -> WS["\t"] flag_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Flags"] PAREN_OPEN["("] DECIMAL_LITERAL["123456"] COMMA[","] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$flags.text,$flags_def::flagName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] (WS["\t"] flag_element)+ WS["\t"] BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
         {
             defineFlag( ctx, $message::messageName, $flags_def::flagName, $flags_def::flagList, $flags_def::flagBits);
             $flags_def::flagList->free($flags_def::flagList);

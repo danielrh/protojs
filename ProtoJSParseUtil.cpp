@@ -231,6 +231,11 @@ void  definePackage(pProtoJSParser ctx, pANTLR3_STRING id) {
     SCOPE_TOP(NameSpace)->packageDot->append8(SCOPE_TOP(NameSpace)->packageDot,".");
 }
 
+pANTLR3_STRING ANTLR3_CDECL stringSet(pANTLR3_STRING s,pANTLR3_STRING other){
+    s->setS(s,other);
+    return s;
+}
+
 pANTLR3_STRING  stringDup(pANTLR3_STRING s) {
     pANTLR3_STRING retval=s->factory->newPtr(s->factory,s->chars,s->len);
     return retval;
