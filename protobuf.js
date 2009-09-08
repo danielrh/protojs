@@ -1066,4 +1066,4 @@ if (typeof(console)=="undefined") console = {};
 if (typeof(console.log)=="undefined") console.log = function(message){document.body.appendChild(document.createTextNode(message+"..."));};
 
 PBJ = PROTO;
-PBJ.duration = PROTO.int32;
+PBJ.duration = PROTO.sfixed64;

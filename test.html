@@ -59,10 +59,10 @@ window.onload = function() {
   extmsg.xxb = arr;
   extmsg.f32 = Sirikata.PB.TestMessage.Flagsf32.WE | Sirikata.PB.TestMessage.Flagsf32.IMAGE;
   extmsg.e32 = 'WEB1';
-  extmsg.submes.subduration = 1234567;
-  extmsg.submessers.push().subduration = 1;
-  extmsg.submessers.push().subduration = 2;
-  extmsg.submessers.push().subduration = 3;
+  extmsg.submes.subduration = PROTO.I64.fromNumber(1234567);
+  extmsg.submessers.push().subduration = PROTO.I64.fromNumber(1);
+  extmsg.submessers.push().subduration = PROTO.I64.fromNumber(2);
+  extmsg.submessers.push().subduration = PROTO.I64.fromNumber(1234563242342347234324.);
   extmsg.extmesser.is_true = false;
   output.value += extmsg;
   extmsg.SerializeToStream(stream);
