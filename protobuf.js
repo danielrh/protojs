@@ -25,11 +25,7 @@ PROTO.I64.prototype = {
     },
     convertToUnsigned: function() {
         var local_lsw;
-        if (false&&this.sign<0) {
-            local_lsw=this.lsw+2147483647;
-        }else {
-            local_lsw=this.lsw;
-        }
+        local_lsw=this.lsw;
         var local_msw;
         if (this.sign<0) {
             local_msw=this.msw+2147483648;
@@ -37,6 +33,12 @@ PROTO.I64.prototype = {
             local_msw=this.msw;
         }
         return new PROTO.I64(local_msw,local_lsw,1);
+    },
+    convertFromUnsigned:function() {
+        if(this.msw>=2147483648) {
+            return new PROTO.I64(this.msw-2147483648,this.lsw,-1);
+        }
+        return new PROTO.I64(this.msw,this.lsw,1);
     },
     convertToZigzag: function() {
         var local_lsw;
@@ -51,6 +53,16 @@ PROTO.I64.prototype = {
             local_lsw-=4294967296;
         }
         return new PROTO.I64(local_msw,local_lsw,1);
+    },
+    convertFromZigzag:function() {
+        if(this.msw&1) {
+            return new PROTO.I64((this.msw>>>1),
+                                 2147483648+(this.lsw>>>1),
+                                 (this.lsw&1)?-1:1);
+        }
+        return new PROTO.I64((this.msw>>>1),
+                             (this.lsw>>>1),
+                             (this.lsw&1)?-1:1);
     },
     serializeToLEBase256: function() {
         var arr = new Array(8);
@@ -133,7 +145,55 @@ PROTO.I64.fromNumber = function(mynum) {
 PROTO.I64.from32pair = function(msw, lsw, sign) {
     return new PROTO.I64(msw, lsw, sign);
 };
+PROTO.I64.parseLEVar128 = function (stream) {
+    var n = 0;
+    var endloop = false;
+    var offset=1;
+    for (var i = 0; !endloop && i < 5; i++) {
+        var byt = stream.readByte();
+        if (byt >= 128) {
+            byt -= 128;
+        } else {
+            endloop = true;
+        }
+        n += offset*byt;
+        offset *= 128;
+    }
+    var lsw=n&4294967295;
+    var msw = ((mynum-lsw)/4294967296);    
+    offset=8;
+    for (var i = 0; !endloop && i < 5; i++) {
+        var byt = stream.readByte();
+        if (byt >= 128) {
+            byt -= 128;
+        } else {
+            endloop = true;
+        }
+        msw += offset*byt;
+        offset *= 128;
+    }
+    return PROTO.I64(msw&4294967295,lsw,1);
+};
 
+PROTO.I64.parseLEBase256 = function (stream) {
+    var n = 0;
+    var endloop = false;
+    var offset=1;
+    for (var i = 0; i < 4; i++) {
+        var byt = stream.readByte();
+        n += offset*byt;
+        offset *= 256;
+    }
+    var lsw=n;
+    var msw=0;
+    offset=1;
+    for (var i = 0; i < 4; i++) {
+        var byt = stream.readByte();
+        msw += offset*byt;
+        offset *= 256;
+    }
+    return PROTO.I64(msw,lsw,1);
+};
 
 //+ Jonas Raoni Soares Silva
 //@ http://jsfromhell.com/classes/binary-parser [rev. #1]
@@ -479,9 +539,10 @@ PROTO.bytes = {
     };
     function parseSFixed32(stream) {
         var n = 0;
+        var offset=1;
         for (var i = 0; i < 4; i++) {
-            n *= 256;
-            n += stream.readByte();
+            n += offset*stream.readByte();
+            offset *= 256;
         }
         return n;
     };
@@ -516,6 +577,7 @@ PROTO.bytes = {
     function parseUInt32(stream) {
         var n = 0;
         var endloop = false;
+        var offset=1;
         for (var i = 0; !endloop && i < 5; i++) {
             var byt = stream.readByte();
             if (byt >= 128) {
@@ -523,8 +585,8 @@ PROTO.bytes = {
             } else {
                 endloop = true;
             }
-            n *= 128;
-            n += byt;
+            n += offset*byt;
+            offset *= 128;
         }
         return n;
     };
@@ -557,27 +619,42 @@ PROTO.bytes = {
         throw "64-bit integers must be PROTO.I64 objects!";
     };
     function serializeInt64(n, stream) {
-        stream.write(n.serializeToLEBase128());
+        stream.write(n.convertToUnsigned().serializeToLEVar128());
     }
     function serializeSInt64(n, stream) {
-        SerializeInt64(n.convertToZigzag(), stream);
+        stream.write(n.convertToZigzag().serializeToLEVar128());
     }
     function serializeUInt64(n, stream) {
-        SerializeInt64(n.convertToUnsigned(), stream);
+        stream.write(n.serializeToLEVar128());
     }
     function serializeSFixed64(n, stream) {
-        stream.write(n.serializeToLEBase256());
+        stream.write(n.convertToUnsigned().serializeToLEVar128());
     }
     function serializeFixed64(n, stream) {
-        SerializeSFixed64(n.convertToUnsigned(), stream);
+        stream.write(n.serializeToLEVar128());
     }
-    PROTO.sfixed64 = makeclass(convert64, serializeSFixed64, null);
-    PROTO.fixed64 = makeclass(convert64, serializeFixed64, null);
+    function parseSFixed64(stream) {
+        return PROTO.I64.parseLEBase256(stream).convertFromUnsigned();
+    }
+    function parseFixed64(stream) {
+        return PROTO.I64.parseLEBase256(stream);
+    }
+    function parseSInt64(stream) {
+        return PROTO.I64.parseLEVar128(stream).convertFromZigzag();
+    }
+    function parseInt64(stream) {
+        return PROTO.I64.parseLEVar128(stream).convertFromUnsigned();
+    }
+    function parseUInt64(stream) {
+        return PROTO.I64.parseLEVar128(stream);
+    }
+    PROTO.sfixed64 = makeclass(convert64, serializeSFixed64, parseSFixed64);
+    PROTO.fixed64 = makeclass(convert64, serializeFixed64, parseFixed64);
     PROTO.sfixed64.wiretype = PROTO.wiretypes.fixed64;
     PROTO.fixed64.wiretype = PROTO.wiretypes.fixed64;
-    PROTO.int64 = makeclass(convert64, serializeInt64, null);
-    PROTO.sint64 = makeclass(convert64, serializeSInt64, null);
-    PROTO.uint64 = makeclass(convert64, serializeUInt64, null);
+    PROTO.int64 = makeclass(convert64, serializeInt64, parseInt64);
+    PROTO.sint64 = makeclass(convert64, serializeSInt64, parseSInt64);
+    PROTO.uint64 = makeclass(convert64, serializeUInt64, parseUInt64);
 
     PROTO.bool = makeclass(function(bool) {return bool?true:false;},
                            serializeInt32,
@@ -639,7 +716,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
             if (nextprop) {
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
-                stream.read(8); //PROTO.fixed64.ParseFromStream(stream);
+                PROTO.fixed64.ParseFromStream(stream);
             }
             break;
         case PROTO.wiretypes.lengthdelim:
@@ -652,8 +729,8 @@ PROTO.mergeProperties = function(properties, stream, values) {
                         var toappend = nextprop.type().ParseFromStream(bas);
                         toappend = nextprop.type().Convert(toappend);
                         values[nextpropname].push(toappend);
-                        readpos += diff;
-                        len -= diff;
+                        //?????FIXME??????????readpos += diff;
+                        //?????FIXME???????????len -= diff;
                     }
                 } else {
                     nextval = nextprop.type().ParseFromStream(stream);
