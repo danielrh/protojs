@@ -303,7 +303,7 @@ field
         stringFree($field::defaultValue);
     }
 	;
-none : (DOT?)->IDENTIFIER[$NameSpace::isPBJ?"{packed=true}":"{}"] ;
+none : (DOT?)->IDENTIFIER[$NameSpace::isPBJ?"{packed:true}":"{}"] ;
 field_offset
     : integer
     {
