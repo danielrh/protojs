@@ -610,7 +610,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
     var nextfid, nexttype, nextprop, nextval;
     while (stream.valid()) {
         nextfid = PROTO.int32.ParseFromStream(stream);
-        console.log(stream.read_pos_+" ; "+stream.array_.length);
+        console.log(""+stream.read_pos_+" ; "+stream.array_.length);
         nexttype = nextfid % 8;
         nextfid >>>= 3;
         nextpropname = fidToProp[nextfid];
@@ -696,7 +696,7 @@ PROTO.serializeProperty = function(property, stream, value) {
             var bas = new PROTO.ByteArrayStream(bytearr);
             for (var i = 0; i < value.length; i++) {
                 var val = property.type().Convert(value[i]);
-                PROTO.array.SerializeToStream(val, bas);
+                property.type().SerializeToStream(val, bas);
             }
             wireId = fid * 8 + PROTO.wiretypes.lengthdelim;
             PROTO.int32.SerializeToStream(wireId, stream);
@@ -976,8 +976,8 @@ PROTO.Extend = function(parent, newproperties) {
 };
 
 //////// DEBUG
-if (!console) console = {};
-if (!console.log) console.log = window.alert;
+if (typeof(console)=="undefined") console = {};
+if (typeof(console.log)=="undefined") console.log = function(message){document.body.appendChild(document.createTextNode(message+"..."));};
 
 PBJ = PROTO;
 PBJ.duration = PROTO.int32;
