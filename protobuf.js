@@ -25,14 +25,14 @@ PROTO.I64.prototype = {
     },
     convertToUnsigned: function() {
         var local_lsw;
-        if (this.sign<0) {
+        if (false&&this.sign<0) {
             local_lsw=this.lsw+2147483647;
         }else {
             local_lsw=this.lsw;
         }
         var local_msw;
         if (this.sign<0) {
-            local_msw=this.msw+2147483647;
+            local_msw=this.msw+2147483648;
         }else {
             local_msw=this.msw;
         }
@@ -41,11 +41,15 @@ PROTO.I64.prototype = {
     convertToZigzag: function() {
         var local_lsw;
         if (this.sign<0) {
-            local_lsw=this.lsw*2-1;
+            local_lsw=this.lsw*2+1;
         }else {
             local_lsw=this.lsw*2;
         }
-        var local_msw=this.msw*2+((local_lsw>2147483647)?1:0);
+        var local_msw=this.msw*2;
+        if (local_lsw>4294967295){
+            local_msw+=1;
+            local_lsw-=4294967296;
+        }
         return new PROTO.I64(local_msw,local_lsw,1);
     },
     serializeToLEBase256: function() {
@@ -62,20 +66,25 @@ PROTO.I64.prototype = {
         }
         return arr;
     },
-    serializeToLEBase128: function() {
-        var arr = new Array(8);
+    serializeToLEVar128: function() {
+        var arr = new Array(1);
         var temp=this.lsw;
         for (var i = 0; i < 4; i++) {
             arr[i] = (temp&127);
-            temp=(temp>>7);
-        }
-        
+            temp=(temp>>>7);
+            if(temp==0&&this.msw==0) return arr;
+            arr[i]+=128;
+        }        
         arr[4] = (temp&15) | ((this.msw&7)<<4);
+        if (this.msw==0) return arr;
+        arr[4]+=128;
         temp=this.msw;
-        temp=(temp>>3);
+        temp=(temp>>>3);
         for (var i = 5; i < 9; i++) {
             arr[i] = (temp&127);
-            temp=(temp>>7);
+            temp=(temp>>>7);
+            if(temp==0) return arr;
+            arr[i]+=128;
         }
         return arr;
     },

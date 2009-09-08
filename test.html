@@ -5,7 +5,7 @@
 <script type="text/javascript" src="Test.pbj.js"></script>
 <script type="text/javascript">
 window.onload = function() {
-  var my64 = new PROTO.I64(2147483647,2147483648,-1);
+  var my64 = new PROTO.I64(2147483647,4294967295,-1);
   var oneHundred = new PROTO.I64(1,100,1);//4294967396
   var twoTen = new PROTO.I64(2,10,1);//8589934602
   var NoneHundred = new PROTO.I64(1,100,-1);//4294967396
@@ -15,13 +15,15 @@ window.onload = function() {
   var output = document.getElementById('output');
   output.value += "" + my64.msw+","+my64.lsw+"\n";
   output.value += "Parts " + my64.msw+","+my64.lsw+"\n";
+  output.value += "UParts " + unsigned64.msw+","+unsigned64.lsw+"\n";
+  output.value += "ZZParts " + zigzag64.msw+","+zigzag64.lsw+"\n";
   output.value += "Unsigned Num: "+unsigned64.toNumber()+"\n";
   output.value += "Unsigned Zigzag Num: "+zigzag64.toNumber()+"\n";
   output.value += "Num: "+my64.toNumber()+"\n";
   output.value += "Unsigned 256: "+unsigned64.serializeToLEBase256().toString()+"\n";
-  output.value += "Unsigned 128: "+unsigned64.serializeToLEBase128().toString()+"\n";
+  output.value += "Unsigned 128: "+unsigned64.serializeToLEVar128().toString()+"\n";
   output.value += "Zig 256: "+my64.convertToZigzag().serializeToLEBase256().toString()+"\n";
-  output.value += "Zig 128: "+my64.convertToZigzag().serializeToLEBase128().toString()+"\n";
+  output.value += "Zig 128: "+my64.convertToZigzag().serializeToLEVar128().toString()+"\n";
   output.value += "4294967396+8589934602 = "+twoTen.add(oneHundred).toNumber()+"\n";
   output.value += "8589934602-4294967396 = "+twoTen.sub(oneHundred).toNumber()+"\n";
   output.value += "4294967396-8589934602 = "+oneHundred.sub(twoTen).toNumber()+"\n";
