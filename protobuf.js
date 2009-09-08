@@ -76,14 +76,14 @@ PROTO.I64.prototype = {
             arr[i]+=128;
         }        
         arr[4] = (temp&15) | ((this.msw&7)<<4);
-        if (this.msw==0) return arr;
+        temp=(this.msw>>>3);
+        if (temp==0) return arr;
         arr[4]+=128;
-        temp=this.msw;
-        temp=(temp>>>3);
-        for (var i = 5; i < 9; i++) {
+        for (var i = 5; i<10; i++) {
             arr[i] = (temp&127);
             temp=(temp>>>7);
             if(temp==0) return arr;
+            
             arr[i]+=128;
         }
         return arr;
