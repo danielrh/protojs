@@ -7,9 +7,6 @@ PROTO.wiretypes = {
     fixed32: 5,
 };
 
-PBJ = PROTO;
-PBJ.duration = PBJ.int32;
-
 PROTO.optional = 'optional';
 PROTO.repeated = 'repeated';
 PROTO.required = 'required';
@@ -336,10 +333,10 @@ PROTO.ByteArrayStream = function(arr) {
     this.read_pos_ = 0;
     this.write_pos_ = arr.length;
 };
-PROTO.ByteArrayStream.prototype = new PROTO.Stream;
+PROTO.ByteArrayStream.prototype = new PROTO.Stream();
 PROTO.ByteArrayStream.prototype.read = function(amt) {
     var ret = this.array_.slice(this.read_pos_, this.read_pos_+amt);
-    this.read_pos += amt;
+    this.read_pos_ += amt;
     return ret;
 };
 PROTO.ByteArrayStream.prototype.write = function(arr) {
@@ -347,44 +344,54 @@ PROTO.ByteArrayStream.prototype.write = function(arr) {
     this.write_pos_ = this.array_.length;
 };
 PROTO.ByteArrayStream.prototype.readByte = function() {
-    return this.array_[this.read_pos ++];
+    return this.array_[this.read_pos_ ++];
 };
 PROTO.ByteArrayStream.prototype.writeByte = function(byte) {
     this.array_.push(byte);
     this.write_pos_ = this.array_.length;
 };
-PROTO.ByteArrayStream.valid = function() {
-    return this.read_pos < this.array_.length;
+PROTO.ByteArrayStream.prototype.valid = function() {
+    return this.read_pos_ < this.array_.length;
 };
 
 PROTO.array =
     (function() {
-        var SUPER = Array;
         function ProtoArray(datatype) {
-            this.datatype_ = datatype
+            this.datatype_ = datatype.type();
+            this.array_ = new Array;
+            this.length = 0;
         };
         ProtoArray.IsInitialized = function IsInitialized(val) {
             return val.length > 0;
         }
-        ProtoArray.prototype = new SUPER();
-        ProtoArray.prototype.push = function add(value) {
-            if (value === undefined) {
-                var newval = new this.datatype_;
+        ProtoArray.prototype = {};
+        ProtoArray.prototype.push = function add() {
+            if (arguments.length === 0) {
                 if (this.datatype_.composite) {
-                    this.add(newval);
+                    var newval = new this.datatype_;
+                    this.array_.push(newval);
+                    this[this.length] = newval;
+                    this.length += 1;
                     return newval;
                 } else {
                     throw "Called add(undefined) for a non-composite";
                 }
+            } else {
+                for (var i = 0; i < arguments.length; i++) {
+                    var newval = this.datatype_.Convert(arguments[i]);
+                    this.array_.push(newval);
+                    this[this.length] = newval;
+                }
+                this.length = this.array_.length;
             }
-            SUPER.push(this.datatype_.Convert(value));
+            return arguments[0];
         }
         return ProtoArray;
     })();
 
 PROTO.string = {
     Convert: function(str) {
-        return String.valueOf(str);
+        return ''+str;
     },
     wiretype: PROTO.wiretypes.lengthdelim,
     SerializeToStream: function(str, stream) {
@@ -412,7 +419,7 @@ PROTO.bytes = {
         stream.write(arr);
     },
     ParseFromStream: function(stream) {
-        var len = PROTO>int32.ParseFromStream(stream);
+        var len = PROTO.int32.ParseFromStream(stream);
         return stream.read(len);
     },
     toString: function(bytes) {return '['+bytes+']';}
@@ -563,7 +570,9 @@ PROTO.bytes = {
     PROTO.sint64 = makeclass(convert64, serializeSInt64, null);
     PROTO.uint64 = makeclass(convert64, serializeUInt64, null);
 
-    PROTO.bool = makeclass(function(bool) {return bool?true:false;}, serializeInt32, parseUInt32);
+    PROTO.bool = makeclass(function(bool) {return bool?true:false;},
+                           serializeInt32,
+                           parseUInt32);
 
     function convertFloatingPoint(f) {
         var n = parseFloat(f);
@@ -572,22 +581,22 @@ PROTO.bytes = {
         }
         return n;
     };
-    function serializeFloat(flt, stream) {
+    function writeFloat(flt, stream) {
         stream.write(PROTO.binaryParser.fromFloat(flt));
     };
-    function parseFloat(stream) {
+    function readFloat(stream) {
         var arr = stream.read(4);
         return PROTO.binaryParser.toFloat(arr);
     };
-    function serializeDouble(flt, stream) {
+    function writeDouble(flt, stream) {
         stream.write(PROTO.binaryParser.fromDouble(flt));
     };
-    function parseDouble(stream) {
+    function readDouble(stream) {
         var arr = stream.read(8);
         return PROTO.binaryParser.toDouble(arr);
     };
-    PROTO.float = makeclass(convertFloatingPoint, serializeFloat, parseFloat);
-    PROTO.double = makeclass(convertFloatingPoint, serializeDouble, parseDouble);
+    PROTO.float = makeclass(convertFloatingPoint, writeFloat, readFloat);
+    PROTO.double = makeclass(convertFloatingPoint, writeDouble, readDouble);
     PROTO.float.wiretype = PROTO.wiretypes.fixed32;
     PROTO.double.wiretype = PROTO.wiretypes.fixed64;
 })();
@@ -601,6 +610,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
     var nextfid, nexttype, nextprop, nextval;
     while (stream.valid()) {
         nextfid = PROTO.int32.ParseFromStream(stream);
+        console.log(stream.read_pos_+" ; "+stream.array_.length);
         nexttype = nextfid % 8;
         nextfid >>>= 3;
         nextpropname = fidToProp[nextfid];
@@ -608,6 +618,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
         nextval = undefined;
         switch (nexttype) {
         case PROTO.wiretypes.varint:
+        console.log("read varint field is "+nextfid);
             if (nextprop) {
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
@@ -615,20 +626,23 @@ PROTO.mergeProperties = function(properties, stream, values) {
             }
             break;
         case PROTO.wiretypes.fixed64:
+        console.log("read fixed64 field is "+nextfid);
             if (nextprop) {
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
-                PROTO.fixed64.ParseFromStream(stream);
+                stream.read(8); //PROTO.fixed64.ParseFromStream(stream);
             }
             break;
         case PROTO.wiretypes.lengthdelim:
+        console.log("read lengthdelim field is "+nextfid);
             if (nextprop) {
                 if (nextprop.options.packed) {
                     var bytearr = PROTO.bytes.ParseFromStream(stream);
                     var bas = new PROTO.ByteArrayStream(bytearr);
                     for (var j = 0; j < bytearr.length && bas.valid(); j++) {
                         var toappend = nextprop.type().ParseFromStream(bas);
-                        values[nextpropname].push(nextprop.type().Convert(toappend));
+                        toappend = nextprop.type().Convert(toappend);
+                        values[nextpropname].push(toappend);
                         readpos += diff;
                         len -= diff;
                     }
@@ -640,11 +654,15 @@ PROTO.mergeProperties = function(properties, stream, values) {
             }
             break;
         case PROTO.wiretypes.fixed32:
+        console.log("read fixed32 field is "+nextfid);
             if (nextprop) {
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
                 PROTO.fixed32.ParseFromStream(stream);
             }
+            break;
+        default:
+        console.log("ERROR: Unknown type "+nexttype+" for "+nextfid);
             break;
         }
         if (nextval !== undefined) {
@@ -674,7 +692,8 @@ PROTO.serializeProperty = function(property, stream, value) {
     if (property.multiplicity == PROTO.repeated) {
         if (property.options.packed) {
             var bytearr = new Array();
-            var bas = new PROTO.ByteArrayStream(bytearr); // Don't know length beforehand.
+            // Don't know length beforehand.
+            var bas = new PROTO.ByteArrayStream(bytearr);
             for (var i = 0; i < value.length; i++) {
                 var val = property.type().Convert(value[i]);
                 PROTO.array.SerializeToStream(val, bas);
@@ -698,7 +717,7 @@ PROTO.serializeProperty = function(property, stream, value) {
 
 
 PROTO.Message = function(name, properties) {
-    Composite = function() {
+    var Composite = function() {
         this.properties_ = Composite.properties_;
         if (!window.DefineProperty) {
             this.values_ = this;
@@ -711,12 +730,11 @@ PROTO.Message = function(name, properties) {
     };
     Composite.properties_ = {};
     for (var key in properties) {
+        // HACK: classes are currently included alongside properties.
         if (properties[key].isType) {
-            continue; // HACK: classes included alongside properties.
-        }
-        Composite.properties_[key] = properties[key];
-        if (properties[key].isType) {
-            Composite[key] = properties[key]; // HACK: classes included alongside properties.
+            Composite[key] = properties[key];
+        } else {
+            Composite.properties_[key] = properties[key];
         }
     }
     Composite.isType = true;
@@ -757,13 +775,15 @@ PROTO.Message = function(name, properties) {
             for (var key in this.properties_) {
                 if (this.values_[key] !== undefined) {
                     var descriptor = this.properties_[key];
+                    if (!descriptor.type()) continue;
                     if (descriptor.multiplicity == PROTO.repeated) {
                         if (PROTO.array.IsInitialized(this.values_[key])) {
                             return true;
                         }
                     } else {
                         if (!descriptor.type().IsInitialized ||
-                            descriptor.type().IsInitialized(this.values_[key])) {
+                            descriptor.type().IsInitialized(this.values_[key]))
+                        {
                             return true;
                         }
                     }
@@ -773,7 +793,7 @@ PROTO.Message = function(name, properties) {
         },
         ParseFromStream: function Parse(stream) {
             this.Clear();
-            this.Merge(stream);
+            this.MergeFromStream(stream);
         },
         MergeFromStream: function Merge(stream) {
             PROTO.mergeProperties(this.properties_, stream, this.values_);
@@ -786,15 +806,17 @@ PROTO.Message = function(name, properties) {
             }
         },
         // Not implemented:
-        // CopyFrom, MergeFrom, RegisterExtension, SerializePartialToX, IsInitialized??, Extensions, ClearExtension
+        // CopyFrom, MergeFrom, SerializePartialToX,
+        // RegisterExtension, Extensions, ClearExtension
         ClearField: function ClearField(propname) {
             var descriptor = this.properties_[propname];
             delete this.has_fields_[propname];
             if (descriptor.multiplicity == PROTO.repeated) {
-                this.values_[propname] = new PROTO.array(this.properties_[propname]);
+                this.values_[propname] = new PROTO.array(descriptor);
             } else {
-                if (descriptor.type() && descriptor.type().composite) {
-                    this.values_[propname] = new (this.properties_[propname].type())();
+                var type = descriptor.type();
+                if (type && type.composite) {
+                    this.values_[propname] = new type();
                 } else {
                     delete this.values_[propname];
                 }
@@ -812,25 +834,57 @@ PROTO.Message = function(name, properties) {
         },
         SetField: function SetField(propname, value) {
             if (value === undefined) {
-                ClearField(this.values_[propname]);
+                ClearField(propname);
             } else {
-                this.values_[propname] = this.properties_[propname].type().Convert(value);
+                var prop = this.properties_[propname];
+                if (prop.multiplicity == PROTO.repeated) {
+                    ClearField(propname);
+                    for (var i = 0; i < value.length; i++) {
+                        this.values_[propname].append(i);
+                    }
+                } else {
+                    this.values_[propname] = prop.type().Convert(value);
+                }
                 this.has_fields_[propname] = true;
             }
         },
         HasField: function HasField(propname) {
             if (this.values_[propname] !== undefined) {
                 var descriptor = this.properties_[propname];
+                if (!descriptor.type()) {
+                    return false;
+                }
                 if (descriptor.multiplicity == PROTO.repeated) {
                     return PROTO.array.IsInitialized(this.values_[propname]);
                 } else {
-                    if (!this.properties_[propname].type().IsInitialized ||
-                        this.properties_[propname].type().IsInitialized(this.values_[propname])) {
+                    if (!descriptor.type().IsInitialized ||
+                        descriptor.type().IsInitialized(
+                            this.values_[propname]))
+                    {
                         return true;
                     }
                 }
             }
             return false;
+        },
+        formatValue: function(level, spaces, propname, val) {
+            var str = spaces + propname;
+            var type = this.properties_[propname].type();
+            if (type.composite) {
+                str += " " + val.toString(level+1);
+            } else if (typeof val == 'string') {
+                var myval = val;
+                myval = myval.replace("\"", "\\\"")
+                             .replace("\n", "\\n")
+                             .replace("\r","\\r");
+                str += ": \"" + myval + "\"\n";
+            } else if (type.toString) {
+                var myval = type.toString(val);
+                str += ": " + val + "\n";
+            } else {
+                str += ": " + val + "\n";
+            }
+            return str;
         },
         toString: function toString(level) {
             var spaces = "";
@@ -843,26 +897,21 @@ PROTO.Message = function(name, properties) {
             } else {
                 level = 0;
             }
-            for (propname in this.properties_) {
+            for (var propname in this.properties_) {
                 if (!this.properties_[propname].type()) {
                     continue; // HACK:
                 }
                 if (!this.HasField(propname)) {
                     continue;
                 }
-                str += spaces + propname;
-                if (this.properties_[propname].type().composite) {
-                    str += " " + this.values_[propname].toString(level+1);
-                } else if (typeof this.values_[propname] == 'string') {
-                    var myval = this.values_[propname];
-                    myval = myval.replace("\"", "\\\"").replace("\n", "\\n").replace("\r","\\r");
-                    str += ": \"" + myval + "\"\n";
-                } else if (this.properties_[propname].type().toString) {
-                    var val = this.values_[propname];
-                    val = this.properties_[propname].type().toString(val);
-                    str += ": " + val + "\n";
+                if (this.properties_[propname].multiplicity == PROTO.repeated) {
+                    var arr = this.values_[propname];
+                    for (var i = 0; i < arr.length; i++) {
+                        str += this.formatValue(level, spaces, propname, arr[i]);
+                    }
                 } else {
-                    str += ": " + this.values_[propname] + "\n";
+                    str += this.formatValue(level, spaces, propname,
+                                            this.values_[propname]);
                 }
             }
             if (level) {
@@ -915,7 +964,9 @@ PROTO.Enum = function (name, values) {
 
     return enumobj;
 };
-PROTO.Flags = function(bits, name, values) { return PROTO.Enum(bits, name, values); };
+PROTO.Flags = function(bits, name, values) {
+    return PROTO.Enum(bits, name, values);
+};
 
 PROTO.Extend = function(parent, newproperties) {
     for (var key in newproperties) {
@@ -923,3 +974,10 @@ PROTO.Extend = function(parent, newproperties) {
     }
     return parent;
 };
+
+//////// DEBUG
+if (!console) console = {};
+if (!console.log) console.log = window.alert;
+
+PBJ = PROTO;
+PBJ.duration = PROTO.int32;
