@@ -409,7 +409,7 @@ PROTO.ByteArrayStream.prototype.read = function(amt) {
     return ret;
 };
 PROTO.ByteArrayStream.prototype.write = function(arr) {
-    this.array_.concat(arr);
+    Array.prototype.push.apply(this.array_, arr);
     this.write_pos_ = this.array_.length;
 };
 PROTO.ByteArrayStream.prototype.readByte = function() {
@@ -696,7 +696,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
     var nextfid, nexttype, nextprop, nextval;
     while (stream.valid()) {
         nextfid = PROTO.int32.ParseFromStream(stream);
-        console.log(""+stream.read_pos_+" ; "+stream.array_.length);
+//        console.log(""+stream.read_pos_+" ; "+stream.array_.length);
         nexttype = nextfid % 8;
         nextfid >>>= 3;
         nextpropname = fidToProp[nextfid];
@@ -704,7 +704,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
         nextval = undefined;
         switch (nexttype) {
         case PROTO.wiretypes.varint:
-        console.log("read varint field is "+nextfid);
+//        console.log("read varint field is "+nextfid);
             if (nextprop) {
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
@@ -712,7 +712,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
             }
             break;
         case PROTO.wiretypes.fixed64:
-        console.log("read fixed64 field is "+nextfid);
+//        console.log("read fixed64 field is "+nextfid);
             if (nextprop) {
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
@@ -720,7 +720,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
             }
             break;
         case PROTO.wiretypes.lengthdelim:
-        console.log("read lengthdelim field is "+nextfid);
+//        console.log("read lengthdelim field is "+nextfid);
             if (nextprop) {
                 if (nextprop.options.packed) {
                     var bytearr = PROTO.bytes.ParseFromStream(stream);
@@ -729,8 +729,6 @@ PROTO.mergeProperties = function(properties, stream, values) {
                         var toappend = nextprop.type().ParseFromStream(bas);
                         toappend = nextprop.type().Convert(toappend);
                         values[nextpropname].push(toappend);
-                        //?????FIXME??????????readpos += diff;
-                        //?????FIXME???????????len -= diff;
                     }
                 } else {
                     nextval = nextprop.type().ParseFromStream(stream);
@@ -740,7 +738,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
             }
             break;
         case PROTO.wiretypes.fixed32:
-        console.log("read fixed32 field is "+nextfid);
+//        console.log("read fixed32 field is "+nextfid);
             if (nextprop) {
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
@@ -775,6 +773,7 @@ PROTO.serializeProperty = function(property, stream, value) {
     if (!property.type()) return;
     var wiretype = property.type().wiretype;
     var wireId = fid * 8 + wiretype;
+//    console.log("Serializing property "+fid+" as "+wiretype+" pos is "+stream.write_pos_);
     if (property.multiplicity == PROTO.repeated) {
         if (property.options.packed) {
             var bytearr = new Array();
@@ -797,6 +796,7 @@ PROTO.serializeProperty = function(property, stream, value) {
     } else {
         PROTO.int32.SerializeToStream(wireId, stream);
         var val = property.type().Convert(value);
+//        console.log(''+property.type)
         property.type().SerializeToStream(val, stream);
     }
 };
