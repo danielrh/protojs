@@ -129,9 +129,9 @@ importrule
 
 message
     scope {
-        int isExtension;
+        int isExtension;        
         pANTLR3_STRING messageName;
-    }
+    }    
     :   ( message_not_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE 
            -> {ctx->pProtoJSParser_SymbolsStack_limit<=1}?
                   IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_not_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
@@ -288,22 +288,35 @@ field
         pANTLR3_STRING defaultValue;
         int fieldOffset;
         int isNumericType;
+        int isRepeated;
+        int isRequired;
     }
-    @init {$field::defaultValue=NULL; $field::isNumericType=0;}
+    @init {$field::defaultValue=NULL; $field::isNumericType=0;$field::isRepeated=0;$field::isRequired=0;}
     :
-      ( ( (ProtoJSOPTIONAL|REQUIRED|REPEATED) (multiplicitive_type|field_type) field_name EQUALS field_offset (default_value|none) ITEM_TERMINATOR )  
-       -> WS["\t"] field_name COLON[":"] WS[" "] BLOCK_OPEN["{"] WS["\n\t\t"] IDENTIFIERCOLON["options:"] WS[" "] default_value none COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["multiplicity:"] WS[" "] QUALIFIEDIDENTIFIER["PROTO."] ProtoJSOPTIONAL REQUIRED REPEATED COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["type:"] WS[" "] IDENTIFIER["function"] PAREN_OPEN["("]PAREN_CLOSE[")"] BLOCK_OPEN["{"] IDENTIFIER["return"] WS[" "] multiplicitive_type field_type ITEM_TERMINATOR[";"] BLOCK_CLOSE["}"] COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["id:"] WS[" "] field_offset WS["\n\t"] BLOCK_CLOSE["}"] COMMA[","] WS["\n"])
+      ( ( multiplicity (multiplicitive_type|field_type) field_name EQUALS field_offset (default_value|none) ITEM_TERMINATOR )  
+       -> WS["\t"] field_name COLON[":"] WS[" "] BLOCK_OPEN["{"] WS["\n\t\t"] IDENTIFIERCOLON["options:"] WS[" "] default_value none COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["multiplicity:"] WS[" "] QUALIFIEDIDENTIFIER["PROTO."] multiplicity COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["type:"] WS[" "] IDENTIFIER["function"] PAREN_OPEN["("]PAREN_CLOSE[")"] BLOCK_OPEN["{"] IDENTIFIER["return"] WS[" "] multiplicitive_type field_type ITEM_TERMINATOR[";"] BLOCK_CLOSE["}"] COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["id:"] WS[" "] field_offset WS["\n\t"] BLOCK_CLOSE["}"] COMMA[","] WS["\n"])
     { 
-        if (($REQUIRED||$REPEATED)&&$field::defaultValue&&$field::defaultValue->len) {
+        if (($field::isRepeated||$field::isRequired)&&$field::defaultValue&&$field::defaultValue->len) {
            fprintf(stderr,"error: line \%d: default not allowed for repeated or optional elements in field \%s : \%s\n",$ITEM_TERMINATOR.line,$field::fieldName->chars,$field::defaultValue->chars);
         }
-        defineField(ctx, $field::fieldType,$field::fieldName,$field::defaultValue,$field::fieldOffset,$REPEATED==NULL,$REQUIRED!=NULL,0);
+        defineField(ctx, $field::fieldType,$field::fieldName,$field::defaultValue,$field::fieldOffset,$field::isRepeated==0,$field::isRequired,0);
         stringFree($field::fieldName);
         stringFree($field::fieldType);
         stringFree($field::defaultValue);
     }
 	;
-none : (DOT?)->IDENTIFIER[$NameSpace::isPBJ?"{packed:true}":"{}"] ;
+
+multiplicity : (ProtoJSOPTIONAL){}
+    |(REQUIRED) 
+    { $field::isRequired=1;} 
+               |(REPEATED) 
+    {
+            $field::isRepeated=1;
+    }
+	;
+
+
+none : (DOT?)->IDENTIFIER[($field::isNumericType||isPackable(ctx,$field::fieldType))&&$field::isRepeated&&$NameSpace::isPBJ?"{packed:true}":"{}"] ;
 field_offset
     : integer
     {
@@ -355,7 +368,9 @@ multiplicitive_type
     : 
     (multiplicitive_advanced_type -> QUALIFIEDIDENTIFIER["PBJ."] multiplicitive_advanced_type)
     {
-       $field::fieldType=stringDup($multiplicitive_advanced_type.text);        
+       $field::fieldType=stringDup($multiplicitive_advanced_type.text);
+       $field::isNumericType=1;
+       $field::isRepeated=1;
     }
     ;
 
@@ -366,7 +381,7 @@ array_spec
 default_value
 	:	
     (SQBRACKET_OPEN option_pairs SQBRACKET_CLOSE -> 
-     {$NameSpace::isPBJ}?  BLOCK_OPEN["{"] option_pairs COMMA[","] IDENTIFIER["packed"] COLON[":"] BOOL_LITERAL["true"] BLOCK_CLOSE["}"]
+     {($field::isNumericType||isPackable(ctx,$field::fieldType))&&$field::isRepeated&&$NameSpace::isPBJ}?  BLOCK_OPEN["{"] option_pairs COMMA[","] IDENTIFIER["packed"] COLON[":"] BOOL_LITERAL["true"] BLOCK_CLOSE["}"]
      ->  BLOCK_OPEN["{"] option_pairs BLOCK_CLOSE["}"])
     ;
 

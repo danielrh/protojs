@@ -199,6 +199,12 @@ std::string qualifyStringType(pProtoJSParser ctx, pANTLR3_STRING identifier){
     std::string retval=currentNamespace(ctx);
     return findSymbol(ctx,retval,(const char*)identifier->chars);
 }
+ANTLR3_BOOLEAN isPackable(pProtoJSParser ctx, pANTLR3_STRING identifier){
+    std::string qst=qualifyStringType(ctx,identifier);
+    void * isMessage=SCOPE_TOP(NameSpace)->qualifiedTypes->get(SCOPE_TOP(NameSpace)->qualifiedTypes,(void*)qst.c_str());
+    return (isMessage==gEnumType||isMessage==gFlagType);
+}
+
 int isEnum(pProtoJSParser ctx, pANTLR3_STRING identifier) {
     std::string qst=qualifyStringType(ctx,identifier);
     int retval=SCOPE_TOP(NameSpace)->qualifiedTypes->get(SCOPE_TOP(NameSpace)->qualifiedTypes,(void*)qst.c_str())==gEnumType;
