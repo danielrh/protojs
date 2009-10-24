@@ -438,10 +438,15 @@ PROTO.ByteArrayStream.prototype.valid = function() {
 
 PROTO.array =
     (function() {
-        function ProtoArray(datatype) {
+        function ProtoArray(datatype, input) {
             this.datatype_ = datatype.type();
             this.array_ = new Array;
             this.length = 0;
+            if (input instanceof Array) {
+                for (var i=0;i<input.length;++i) {
+                    this.push(input[i]);
+                }
+            }
         };
         ProtoArray.IsInitialized = function IsInitialized(val) {
             return val.length > 0;
@@ -727,6 +732,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
         case PROTO.wiretypes.fixed64:
 //        console.log("read fixed64 field is "+nextfid);
             if (nextprop) {
+                console.log(nextprop.type);
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
                 PROTO.fixed64.ParseFromStream(stream);
@@ -736,12 +742,31 @@ PROTO.mergeProperties = function(properties, stream, values) {
 //        console.log("read lengthdelim field is "+nextfid);
             if (nextprop) {
                 if (nextprop.options.packed) {
+                    var nextValue=values[nextpropname];
+                    if (nextprop.type().cardinality>1) {
+                        if (nextValue.unpackedValues===undefined) {
+                            nextValue.unpackedValues=new Array();
+                        }
+                    }
                     var bytearr = PROTO.bytes.ParseFromStream(stream);
                     var bas = new PROTO.ByteArrayStream(bytearr);
                     for (var j = 0; j < bytearr.length && bas.valid(); j++) {
                         var toappend = nextprop.type().ParseFromStream(bas);
-                        toappend = nextprop.type().Convert(toappend);
-                        values[nextpropname].push(toappend);
+
+                        if (nextprop.type().cardinality>1) {
+                            nextValue.unpackedValues.push(toappend);
+                            if (nextValue.unpackedValues.length==nextprop.type().cardinality) {
+                                nextValue.push(nextValue.unpackedValues);
+                                nextValue.unpackedValues.length=0;
+                            }
+                        }else {
+                            nextValue.push(toappend);
+                        }
+                    }
+                    if (nextprop.type().cardinality>1) {
+                        if (nextValue.unpackedValues.length==0) {
+                            delete nextValue.unpackedValues;
+                        }
                     }
                 } else {
                     nextval = nextprop.type().ParseFromStream(stream);
@@ -763,8 +788,20 @@ PROTO.mergeProperties = function(properties, stream, values) {
             break;
         }
         if (nextval !== undefined) {
+            var nextValue=values[nextpropname];
             if (nextprop.multiplicity === PROTO.repeated) {
-                values[nextpropname].push(nextprop.type().Convert(nextval));
+                if (nextprop.type().cardinality>1) {
+                    if (nextValue.unpackedValues===undefined) {
+                        nextValue.unpackedValues=new Array();
+                    }
+                    nextValue.unpakcedValues.push(nextval);
+                    if (nextValue.unpackedValues.length==nextprop.type().cardinality) {
+                        nextValue.push(nextValue.unpackedValues);
+                        delete nextValue.unpackedValues;
+                    }
+                }else {
+                    nextValue.push(nextval);
+                }
             } else {
                 values[nextpropname] = nextprop.type().Convert(nextval);
             }
@@ -781,9 +818,56 @@ PROTO.mergeProperties = function(properties, stream, values) {
     throw str;
 */
 
+PROTO.serializeTupleProperty = function(property, stream, value) {
+    var fid = property.id;
+    var wiretype = property.type().wiretype;
+    var wireId = fid * 8 + wiretype;
+//    console.log("Serializing property "+fid+" as "+wiretype+" pos is "+stream.write_pos_);
+    if (property.options.packed) {
+        var bytearr = new Array();
+        // Don't know length beforehand.
+        var bas = new PROTO.ByteArrayStream(bytearr);
+        if (property.multiplicity == PROTO.repeated) {
+            for (var i = 0; i < value.length; i++) {
+                var val = property.type().Convert(value[i]);
+                for (var j=0;j<property.type().cardinality;++j) {
+                    property.type().SerializeToStream(val[j], bas);
+                }
+            }
+        }else {
+            var val = property.type().Convert(value);
+            for (var j=0;j<property.type().cardinality;++j) {
+                property.type().SerializeToStream(val[j], bas);
+            }
+        }
+        wireId = fid * 8 + PROTO.wiretypes.lengthdelim;
+        PROTO.int32.SerializeToStream(wireId, stream);
+        PROTO.bytes.SerializeToStream(bytearr, stream);
+    } else {
+        if (property.multiplicity == PROTO.repeated) {
+            for (var i = 0; i < value.length; i++) {
+                PROTO.int32.SerializeToStream(wireId, stream);
+                var val = property.type().Convert(value[i]);
+                for (var j=0;j<property.type().cardinality;++j) {
+                    property.type().SerializeToStream(val[j], stream);
+                }
+            }
+        }else {
+            PROTO.int32.SerializeToStream(wireId, stream);
+            var val = property.type().Convert(value);
+            for (var j=0;j<property.type().cardinality;++j) {
+                property.type().SerializeToStream(val[j], stream);
+            }
+        }
+    }
+};
 PROTO.serializeProperty = function(property, stream, value) {
     var fid = property.id;
     if (!property.type()) return;
+    if (property.type().cardinality>1) {
+        PROTO.serializeTupleProperty(property,stream,value);
+        return;
+    }
     var wiretype = property.type().wiretype;
     var wireId = fid * 8 + wiretype;
 //    console.log("Serializing property "+fid+" as "+wiretype+" pos is "+stream.write_pos_);
