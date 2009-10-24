@@ -23,6 +23,19 @@ PROTO.I64.prototype = {
     toNumber: function() {
         return (this.msw*4294967296 + this.lsw)*this.sign;
     },
+    toString: function() {
+        //return this.toNumber();
+        function zeros(len){
+            var retval="";
+            for (var i=0;i<len;++i) {
+                retval+="0";
+            }
+            return retval;
+        }
+        var firstHalf=this.msw.toString(16);
+        var secondHalf=this.lsw.toString(16);
+        return "0x"+zeros(8-firstHalf.length)+firstHalf+zeros(8-secondHalf.length)+secondHalf;
+    },
     convertToUnsigned: function() {
         var local_lsw;
         local_lsw=this.lsw;
@@ -103,7 +116,7 @@ PROTO.I64.prototype = {
     unsigned_add:function(other) {
         var temp=this.lsw+other.lsw;
         var local_msw=this.msw+other.msw;
-        var local_lsw=temp&4294967295;
+        var local_lsw=temp%4294967296;
         temp-=local_lsw;
         local_msw+=temp/4294967296;
         return new PROTO.I64(local_msw,local_lsw,this.sign);
@@ -137,7 +150,7 @@ PROTO.I64.prototype = {
 PROTO.I64.fromNumber = function(mynum) {
     var sign = (mynum < 0) ? -1 : 1;
     mynum *= sign;
-    var lsw = (mynum&4294967295);
+    var lsw = (mynum%4294967296);
     var msw = ((mynum-lsw)/4294967296);
     return new PROTO.I64(msw, lsw, sign);
 };
@@ -159,7 +172,7 @@ PROTO.I64.parseLEVar128 = function (stream) {
         n += offset*byt;
         offset *= 128;
     }
-    var lsw=n&4294967295;
+    var lsw=n%4294967296
     var msw = ((mynum-lsw)/4294967296);    
     offset=8;
     for (var i = 0; !endloop && i < 5; i++) {
@@ -172,7 +185,7 @@ PROTO.I64.parseLEVar128 = function (stream) {
         msw += offset*byt;
         offset *= 128;
     }
-    return PROTO.I64(msw&4294967295,lsw,1);
+    return PROTO.I64(msw%4294967296,lsw,1);
 };
 
 PROTO.I64.parseLEBase256 = function (stream) {
