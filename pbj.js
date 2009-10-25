@@ -1,5 +1,6 @@
-//var PBJ = {};
-
+if (PBJ === undefined) {
+    var PBJ = {};
+}
 
 function vectorGenerator(num,datatype) {
     return { 
