@@ -24,4 +24,17 @@ function vectorGenerator(num,datatype) {
     };
 };
 
-//PBJ.vector2d=vectorGenerator(2,PROTO.double);
+PBJ.vector2d=vectorGenerator(2,PROTO.double);
+PBJ.vector2f=vectorGenerator(2,PROTO.float);
+
+PBJ.vector3d=vectorGenerator(3,PROTO.double);
+PBJ.vector3f=vectorGenerator(3,PROTO.float);
+
+PBJ.vector4d=vectorGenerator(4,PROTO.double);
+PBJ.vector4f=vectorGenerator(4,PROTO.float);
+
+PBJ.normal=vectorGenerator(2,PROTO.float);
+PBJ.quaternion=vectorGenerator(3,PROTO.float);
+
+PBJ.duration = PROTO.sfixed64;
+PBJ.time = PROTO.fixed64;

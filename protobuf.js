@@ -732,7 +732,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
         case PROTO.wiretypes.fixed64:
 //        console.log("read fixed64 field is "+nextfid);
             if (nextprop) {
-                console.log(nextprop.type);
+                //console.log(nextprop.type);
                 nextval = nextprop.type().ParseFromStream(stream);
             } else {
                 PROTO.fixed64.ParseFromStream(stream);
@@ -1162,5 +1162,3 @@ PROTO.Extend = function(parent, newproperties) {
 if (typeof(console)=="undefined") console = {};
 if (typeof(console.log)=="undefined") console.log = function(message){document.body.appendChild(document.createTextNode(message+"..."));};
 
-PBJ = PROTO;
-PBJ.duration = PROTO.sfixed64;
