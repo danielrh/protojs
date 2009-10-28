@@ -173,7 +173,7 @@ PROTO.I64.parseLEVar128 = function (stream) {
         offset *= 128;
     }
     var lsw=n%4294967296
-    var msw = ((mynum-lsw)/4294967296);    
+    var msw = 0;    
     offset=8;
     for (var i = 0; !endloop && i < 5; i++) {
         var byt = stream.readByte();
@@ -185,7 +185,7 @@ PROTO.I64.parseLEVar128 = function (stream) {
         msw += offset*byt;
         offset *= 128;
     }
-    return PROTO.I64(msw%4294967296,lsw,1);
+    return new PROTO.I64(msw%4294967296,lsw,1);
 };
 
 PROTO.I64.parseLEBase256 = function (stream) {
@@ -205,7 +205,7 @@ PROTO.I64.parseLEBase256 = function (stream) {
         msw += offset*byt;
         offset *= 256;
     }
-    return PROTO.I64(msw,lsw,1);
+    return new PROTO.I64(msw,lsw,1);
 };
 
 //+ Jonas Raoni Soares Silva
@@ -712,6 +712,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
         fidToProp[properties[key].id] = key;
     }
     var nextfid, nexttype, nextprop, nextval;
+    var incompleteTuples = {};
     while (stream.valid()) {
         nextfid = PROTO.int32.ParseFromStream(stream);
 //        console.log(""+stream.read_pos_+" ; "+stream.array_.length);
@@ -743,10 +744,12 @@ PROTO.mergeProperties = function(properties, stream, values) {
             if (nextprop) {
                 if (nextprop.options.packed) {
                     var nextValue=values[nextpropname];
+                    var tup;
                     if (nextprop.type().cardinality>1) {
-                        if (nextValue.unpackedValues===undefined) {
-                            nextValue.unpackedValues=new Array();
+                        if (incompleteTuples[nextpropname]===undefined) {
+                            incompleteTuples[nextpropname]=new Array();
                         }
+                        tup = incompleteTuples[nextpropname];
                     }
                     var bytearr = PROTO.bytes.ParseFromStream(stream);
                     var bas = new PROTO.ByteArrayStream(bytearr);
@@ -754,18 +757,19 @@ PROTO.mergeProperties = function(properties, stream, values) {
                         var toappend = nextprop.type().ParseFromStream(bas);
 
                         if (nextprop.type().cardinality>1) {
-                            nextValue.unpackedValues.push(toappend);
-                            if (nextValue.unpackedValues.length==nextprop.type().cardinality) {
-                                nextValue.push(nextValue.unpackedValues);
-                                nextValue.unpackedValues.length=0;
+                            tup.push(toappend);
+                            if (tup.length==nextprop.type().cardinality) {
+                                if (nextprop.multiplicity == PROTO.repeated) {
+                                    nextValue.push(tup);
+                                } else {
+                                    values[nextpropname] =
+                                        nextprop.type().Convert(tup);
+                                }
+                                incompleteTuples[nextpropname]=new Array();
+                                tup = incompleteTuples[nextpropname];
                             }
                         }else {
                             nextValue.push(toappend);
-                        }
-                    }
-                    if (nextprop.type().cardinality>1) {
-                        if (nextValue.unpackedValues.length==0) {
-                            delete nextValue.unpackedValues;
                         }
                     }
                 } else {
@@ -788,20 +792,27 @@ PROTO.mergeProperties = function(properties, stream, values) {
             break;
         }
         if (nextval !== undefined) {
+            if (values[nextpropname] === undefined && nextprop.type().cardinality>1) {
+                values[nextpropname] = {};
+            }
             var nextValue=values[nextpropname];
-            if (nextprop.multiplicity === PROTO.repeated) {
-                if (nextprop.type().cardinality>1) {
-                    if (nextValue.unpackedValues===undefined) {
-                        nextValue.unpackedValues=new Array();
-                    }
-                    nextValue.unpakcedValues.push(nextval);
-                    if (nextValue.unpackedValues.length==nextprop.type().cardinality) {
-                        nextValue.push(nextValue.unpackedValues);
-                        delete nextValue.unpackedValues;
-                    }
-                }else {
-                    nextValue.push(nextval);
+            if (nextprop.type().cardinality>1) {
+                var tup;
+                if (incompleteTuples[nextpropname]===undefined) {
+                    incompleteTuples[nextpropname]=new Array();
+                    tup = incompleteTuples[nextpropname];
                 }
+                tup.push(nextval);
+                if (tup.length==nextprop.type().cardinality) {
+                    if (nextprop.multiplicity == PROTO.repeated) {
+                        nextValue.push(tup);
+                    } else {
+                        values[nextpropname] = nextprop.type().Convert(tup);
+                    }
+                    incompleteTuples[nextpropname] = undefined;
+                }
+            } else if (nextprop.multiplicity === PROTO.repeated) {
+                nextValue.push(nextval);
             } else {
                 values[nextpropname] = nextprop.type().Convert(nextval);
             }

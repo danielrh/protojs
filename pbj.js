@@ -3,7 +3,7 @@ if (PBJ === undefined) {
 }
 
 function vectorGenerator(num,datatype) {
-    return { 
+    return {
         Convert:function (vec) {
             if (vec instanceof Array && vec.length==num) {
                 return vec;
@@ -14,7 +14,7 @@ function vectorGenerator(num,datatype) {
             } else if (num==4&&vec.x!==undefined && vec.y!==undefined && vec.z!==undefined,vec.w!==undefined){
                 return [vec.x,vec.y,vec.z,vec.w];
             } else {
-                throw "Vector in invalid format";
+                Vector_in_invalid_format.x;
             }
         },
         wiretype: datatype.wiretype,
