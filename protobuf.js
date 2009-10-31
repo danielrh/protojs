@@ -575,7 +575,8 @@ PROTO.bytes = {
         if (n < 0) {
             n += 4294967296;
         }
-        for (var i = 0; n && i < 5; i++) {
+        // Loop once regardless of whether n is 0.
+        for (var i = 0; i==0 || (n && i < 5); i++) {
             var byt = n%128;
             n >>>= 7;
             if (n) {
@@ -646,10 +647,10 @@ PROTO.bytes = {
         stream.write(n.serializeToLEVar128());
     }
     function serializeSFixed64(n, stream) {
-        stream.write(n.convertToUnsigned().serializeToLEVar128());
+        stream.write(n.convertToUnsigned().serializeToLEBase256());
     }
     function serializeFixed64(n, stream) {
-        stream.write(n.serializeToLEVar128());
+        stream.write(n.serializeToLEBase256());
     }
     function parseSFixed64(stream) {
         return PROTO.I64.parseLEBase256(stream).convertFromUnsigned();
@@ -711,7 +712,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
     for (var key in properties) {
         fidToProp[properties[key].id] = key;
     }
-    var nextfid, nexttype, nextprop, nextval;
+    var nextfid, nexttype, nextprop, nextval, nextpropname;
     var incompleteTuples = {};
     while (stream.valid()) {
         nextfid = PROTO.int32.ParseFromStream(stream);
@@ -743,7 +744,6 @@ PROTO.mergeProperties = function(properties, stream, values) {
 //        console.log("read lengthdelim field is "+nextfid);
             if (nextprop) {
                 if (nextprop.options.packed) {
-                    var nextValue=values[nextpropname];
                     var tup;
                     if (nextprop.type().cardinality>1) {
                         if (incompleteTuples[nextpropname]===undefined) {
@@ -760,7 +760,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
                             tup.push(toappend);
                             if (tup.length==nextprop.type().cardinality) {
                                 if (nextprop.multiplicity == PROTO.repeated) {
-                                    nextValue.push(tup);
+                                    values[nextpropname].push(tup);
                                 } else {
                                     values[nextpropname] =
                                         nextprop.type().Convert(tup);
@@ -769,7 +769,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
                                 tup = incompleteTuples[nextpropname];
                             }
                         }else {
-                            nextValue.push(toappend);
+                            values[nextpropname].push(toappend);
                         }
                     }
                 } else {
@@ -795,7 +795,6 @@ PROTO.mergeProperties = function(properties, stream, values) {
             if (values[nextpropname] === undefined && nextprop.type().cardinality>1) {
                 values[nextpropname] = {};
             }
-            var nextValue=values[nextpropname];
             if (nextprop.type().cardinality>1) {
                 var tup;
                 if (incompleteTuples[nextpropname]===undefined) {
@@ -805,14 +804,14 @@ PROTO.mergeProperties = function(properties, stream, values) {
                 tup.push(nextval);
                 if (tup.length==nextprop.type().cardinality) {
                     if (nextprop.multiplicity == PROTO.repeated) {
-                        nextValue.push(tup);
+                        values[nextpropname].push(tup);
                     } else {
                         values[nextpropname] = nextprop.type().Convert(tup);
                     }
                     incompleteTuples[nextpropname] = undefined;
                 }
             } else if (nextprop.multiplicity === PROTO.repeated) {
-                nextValue.push(nextval);
+                values[nextpropname].push(nextval);
             } else {
                 values[nextpropname] = nextprop.type().Convert(nextval);
             }
@@ -880,6 +879,9 @@ PROTO.serializeProperty = function(property, stream, value) {
         return;
     }
     var wiretype = property.type().wiretype;
+    if (property.type().composite) {
+        wiretype = PROTO.wiretypes.lengthdelim;
+    }
     var wireId = fid * 8 + wiretype;
 //    console.log("Serializing property "+fid+" as "+wiretype+" pos is "+stream.write_pos_);
     if (property.multiplicity == PROTO.repeated) {
@@ -904,7 +906,6 @@ PROTO.serializeProperty = function(property, stream, value) {
     } else {
         PROTO.int32.SerializeToStream(wireId, stream);
         var val = property.type().Convert(value);
-//        console.log(''+property.type)
         property.type().SerializeToStream(val, stream);
     }
 };
@@ -943,11 +944,16 @@ PROTO.Message = function(name, properties) {
         return val;
     };
     Composite.SerializeToStream = function(value, stream) {
-        return value.SerializeToStream(stream);
+        var bytearr = new Array();
+        var bas = new PROTO.ByteArrayStream(bytearr)
+        value.SerializeToStream(bas);
+        return PROTO.bytes.SerializeToStream(bytearr, stream);
     };
     Composite.ParseFromStream = function(stream) {
+        var bytearr = PROTO.bytes.ParseFromStream(stream);
+        var bas = new PROTO.ByteArrayStream(bytearr);
         var ret = new Composite;
-        ret.ParseFromStream(stream);
+        ret.ParseFromStream(bas);
         return ret;
     };
     Composite.prototype = {
@@ -1074,7 +1080,7 @@ PROTO.Message = function(name, properties) {
                 str += ": \"" + myval + "\"\n";
             } else if (type.toString) {
                 var myval = type.toString(val);
-                str += ": " + val + "\n";
+                str += ": " + myval + "\n";
             } else {
                 str += ": " + val + "\n";
             }
@@ -1124,9 +1130,12 @@ PROTO.Message = function(name, properties) {
     return Composite;
 };
 
-PROTO.Enum = function (name, values) {
+PROTO.Enum = function (name, values, bits) {
+    if (!bits) {
+        bits = 32;
+    }
     var reverseValues = {};
-    var enumobj = {};
+     enumobj = {};
     enumobj.isType = true;
     for (var key in values) {
         reverseValues[values[key] ] = key;
@@ -1147,19 +1156,24 @@ PROTO.Enum = function (name, values) {
         throw "Not a valid "+name+" enumeration value: "+s;
     };
     enumobj.toString = function toString(num) {
-        if (reverseValues[num] !== undefined) {
+        if (reverseValues[num]) {
             return reverseValues[num];
         }
         return "" + num;
     };
-    enumobj.ParseFromStream = PROTO.int32.ParseFromStream;
-    enumobj.SerializeToStream = PROTO.int32.SerializeToStream;
+    enumobj.ParseFromStream = function(a,b) {
+        var e = PROTO.int32.ParseFromStream(a,b);
+        return e;
+    }
+    enumobj.SerializeToStream = function(a,b) {
+        return PROTO.int32.SerializeToStream(a,b);
+    }
     enumobj.wiretype = PROTO.wiretypes.varint;
 
     return enumobj;
 };
 PROTO.Flags = function(bits, name, values) {
-    return PROTO.Enum(bits, name, values);
+    return PROTO.Enum(name, values, bits);
 };
 
 PROTO.Extend = function(parent, newproperties) {
