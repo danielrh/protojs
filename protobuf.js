@@ -34,7 +34,8 @@ PROTO.I64.prototype = {
         }
         var firstHalf=this.msw.toString(16);
         var secondHalf=this.lsw.toString(16);
-        return "0x"+zeros(8-firstHalf.length)+firstHalf+zeros(8-secondHalf.length)+secondHalf;
+        var sign = (this.sign==-1 ? "-" : "");
+        return sign+"0x"+zeros(8-firstHalf.length)+firstHalf+zeros(8-secondHalf.length)+secondHalf;
     },
     convertToUnsigned: function() {
         var local_lsw;
@@ -856,16 +857,16 @@ PROTO.serializeTupleProperty = function(property, stream, value) {
     } else {
         if (property.multiplicity == PROTO.repeated) {
             for (var i = 0; i < value.length; i++) {
-                PROTO.int32.SerializeToStream(wireId, stream);
                 var val = property.type().Convert(value[i]);
                 for (var j=0;j<property.type().cardinality;++j) {
+                    PROTO.int32.SerializeToStream(wireId, stream);
                     property.type().SerializeToStream(val[j], stream);
                 }
             }
         }else {
-            PROTO.int32.SerializeToStream(wireId, stream);
             var val = property.type().Convert(value);
             for (var j=0;j<property.type().cardinality;++j) {
+                PROTO.int32.SerializeToStream(wireId, stream);
                 property.type().SerializeToStream(val[j], stream);
             }
         }
