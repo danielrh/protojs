@@ -1,5 +1,24 @@
 var PROTO = {};
 
+PROTO.DefineProperty = (function () {
+        if (Object.prototype.__defineGetter__ && Object.prototype.__defineSetter__) {
+            function DefineProperty(prototype, property, getter, setter) {
+                if (typeof getter !== 'undefined') {
+                    prototype.__defineGetter__(property, getter);
+                }
+                if (typeof setter !== 'undefined') {
+                    prototype.__defineSetter__(property, setter);
+                }
+            }
+            return DefineProperty;
+        } else if (Object.defineProperty) {
+            function DefineProperty(prototype, property, getter, setter) {
+                Object.defineProperty(prototype, property, {'get': getter, 'set': setter});
+            }
+            return DefineProperty;
+        }
+})();
+
 PROTO.wiretypes = {
     varint: 0,
     fixed64: 1,
@@ -915,7 +934,7 @@ PROTO.serializeProperty = function(property, stream, value) {
 PROTO.Message = function(name, properties) {
     var Composite = function() {
         this.properties_ = Composite.properties_;
-        if (!window.DefineProperty) {
+        if (!PROTO.DefineProperty) {
             this.values_ = this;
         } else {
             this.values_ = {};
@@ -1031,15 +1050,20 @@ PROTO.Message = function(name, properties) {
             return ret;
         },
         GetField: function GetField(propname) {
-            return this.properties_[propname];
+            //console.log(propname);
+            if (this.values_[propname] === undefined) {
+                this.ClearField(propname);
+            }
+            return this.values_[propname];
         },
         SetField: function SetField(propname, value) {
+            //console.log(propname+"="+value);
             if (value === undefined) {
-                ClearField(propname);
+                this.ClearField(propname);
             } else {
                 var prop = this.properties_[propname];
                 if (prop.multiplicity == PROTO.repeated) {
-                    ClearField(propname);
+                    this.ClearField(propname);
                     for (var i = 0; i < value.length; i++) {
                         this.values_[propname].append(i);
                     }
@@ -1121,11 +1145,14 @@ PROTO.Message = function(name, properties) {
             return str;
         },
     };
-    if (window.DefineProperty !== undefined) {
-        for (var prop in this.properties_) {
-            DefineProperty(Composite, prop,
-                           function() { this.GetField(prop); },
+    if (PROTO.DefineProperty !== undefined) {
+        for (var prop in Composite.properties_) {
+            console.log("define prop "+prop);
+            (function(prop){
+            PROTO.DefineProperty(Composite.prototype, prop,
+                           function() { return this.GetField(prop); },
                            function(newval) { this.SetField(prop, newval); });
+            })(prop);
         }
     }
     return Composite;
@@ -1186,5 +1213,8 @@ PROTO.Extend = function(parent, newproperties) {
 
 //////// DEBUG
 if (typeof(console)=="undefined") console = {};
-if (typeof(console.log)=="undefined") console.log = function(message){document.body.appendChild(document.createTextNode(message+"..."));};
+if (typeof(console.log)=="undefined") console.log = function(message){
+    if (document && document.body)
+        document.body.appendChild(document.createTextNode(message+"..."));
+};
 

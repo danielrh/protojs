@@ -62,11 +62,16 @@ window.onload = function() {
   extmsg.xxb = arr;
   extmsg.f32 = Sirikata.PB.TestMessage.Flagsf32.WE | Sirikata.PB.TestMessage.Flagsf32.IMAGE;
   extmsg.e32 = 'WEB1';
+try {
+  extmsg.submes.subduration = 0;
+} catch (e) {
+  output.value += "Testing if we get an error for invalid I64: "+e+"\n";
+}
   extmsg.submes.subduration = PROTO.I64.fromNumber(1234567);
   extmsg.submessers.push().subduration = PROTO.I64.fromNumber(1);
   extmsg.submessers.push().subduration = PROTO.I64.fromNumber(2);
   extmsg.submessers.push().subduration = PROTO.I64.fromNumber(18234563242342346752);
-  extmsg.extmesser.is_true = false;
+  extmsg.extmesser.is_true = 5;
   output.value += extmsg;
   extmsg.SerializeToStream(stream);
   output.value += "\n TestMessage encoded is:\n["+arr2+"]\n";
