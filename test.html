@@ -40,6 +40,7 @@ window.onload = function() {
   output.value += flt + ": "+PROTO.binaryParser.fromDouble(flt)+" back "+PROTO.binaryParser.toDouble(PROTO.binaryParser.fromDouble(flt))+"\n";
   var arr = [];
   var stream = new PROTO.ByteArrayStream(arr);
+  var b64stream = new PROTO.Base64Stream();
   var extmsg = new Sirikata.PB.ExternalMessage();
   extmsg.is_true = true;
   output.value += extmsg.toString();
@@ -73,11 +74,16 @@ try {
   extmsg.submessers.push().subduration = PROTO.I64.fromNumber(18234563242342346752);
   extmsg.extmesser.is_true = 5;
   output.value += extmsg;
+  extmsg.SerializeToStream(b64stream);
   extmsg.SerializeToStream(stream);
   output.value += "\n TestMessage encoded is:\n["+arr2+"]\n";
+  output.value += "\n TestMessage base64'ed is:\n"+b64stream.getString()+"\n";
   var decodedmsg = new Sirikata.PB.TestMessage;
   decodedmsg.ParseFromStream(new PROTO.ByteArrayStream(arr2));
   output.value += "\n DECODED: \n"+decodedmsg;
+  var decoded64msg = new Sirikata.PB.TestMessage;
+  decoded64msg.ParseFromStream(new PROTO.Base64Stream(b64stream.getString()));
+  output.value += "\n DECODED64: \n"+decoded64msg;
 };
 </script>
 </head>
