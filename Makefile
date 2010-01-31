@@ -1,6 +1,12 @@
-SIRIKATA = "/home/daniel/sirikata"
-output.proto.js: pbj protocol/Test.pbj
-	./pbj protocol/Test.pbj Test.pbj.js
+ALLSOURCES=$(wildcard protocol/*.pbj)
+
+ALLOUTPUTS=$(patsubst protocol/%,%.js,$(ALLSOURCES))
+
+all: $(ALLOUTPUTS) pbj
+
+%.pbj.js: protocol/%.pbj pbj
+	./pbj $< $@
+
 pbj : main.cpp ProtoJSLexer.o ProtoJSParser.o ProtoJSParseUtil.o
 	g++ -std=c++98 -Wall -static -g2 -o pbj -Iantlr-3.1.2/include -Lantlr-3.1.2/lib -I/usr/local/include -L/usr/local/lib main.cpp ProtoJSLexer.o ProtoJSParser.o ProtoJSParseUtil.o -lantlr3c || g++ -o pbj -Iantlr-3.1.2/include -Lantlr-3.1.2/lib -I/usr/local/include -L/usr/local/lib -g2 main.cpp ProtoJSLexer.o ProtoJSParser.o ProtoJSParseUtil.o antlr-3.1.2/lib/libantlr3c.a || g++ -o pbj -Iantlr-3.1.2/include -Lantlr-3.1.2/lib -I/usr/local/include -L/usr/local/lib -g2 main.cpp ProtoJSLexer.o ProtoJSParser.o ProtoJSParseUtil.o -lantlr3c
 
