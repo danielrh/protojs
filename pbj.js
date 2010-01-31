@@ -15,6 +15,7 @@ function vectorGenerator(num,datatype) {
                 return [vec.x,vec.y,vec.z,vec.w];
             } else {
                 Vector_in_invalid_format.x;
+                return new Array(num);
             }
         },
         toString: function toString(vec) {

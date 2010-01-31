@@ -17,13 +17,14 @@ PROTO.DefineProperty = (function () {
             }
             return DefineProperty;
         }
+        return undefined;
 })();
 
 PROTO.wiretypes = {
     varint: 0,
     fixed64: 1,
     lengthdelim: 2,
-    fixed32: 5,
+    fixed32: 5
 };
 
 PROTO.optional = 'optional';
@@ -279,7 +280,7 @@ with({p: PROTO.BinaryParser.prototype}){
         do
             for(byteValue = b.buffer[ ++curByte ], startBit = precisionBits % 8 || 8, mask = 1 << startBit;
                 mask >>= 1; (byteValue & mask) && (significand += 1 / divisor), divisor *= 2);
-        while(precisionBits -= startBit);
+        while((precisionBits -= startBit));
         return exponent == (bias << 1) + 1 ? significand ? NaN : signal ? -Infinity : +Infinity
             : (1 + signal * -2) * (exponent || significand ? !exponent ? Math.pow(2, -bias + 1) * significand
             : Math.pow(2, exponent - bias) * (1 + significand) : 0);
@@ -416,11 +417,11 @@ PROTO.Stream.prototype = {
     read: function(amt) {
         var result = [];
         for (var i = 0; i < amt; ++i) {
-            var byte = this.readByte();
-            if (byte === null) {
+            var byt = this.readByte();
+            if (byt === null) {
                 break;
             }
-            result.push(byte);
+            result.push(byt);
         }
         return result;
     },
@@ -432,7 +433,7 @@ PROTO.Stream.prototype = {
     readByte: function() {
         return null;
     },
-    writeByte: function(byte) {
+    writeByte: function(byt) {
         write_pos_ += 1;
     },
     valid: function() {
@@ -458,8 +459,8 @@ PROTO.ByteArrayStream.prototype.write = function(arr) {
 PROTO.ByteArrayStream.prototype.readByte = function() {
     return this.array_[this.read_pos_ ++];
 };
-PROTO.ByteArrayStream.prototype.writeByte = function(byte) {
-    this.array_.push(byte);
+PROTO.ByteArrayStream.prototype.writeByte = function(byt) {
+    this.array_.push(byt);
     this.write_pos_ = this.array_.length;
 };
 PROTO.ByteArrayStream.prototype.valid = function() {
@@ -538,12 +539,12 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
         return ret;
     }
 
-    prototype.writeByte = function writeByte(byte) {
+    prototype.writeByte = function writeByte(byt) {
         this.write_extra_bits_ += 2;
         var n = this.write_extra_bits_;
         this.string_ += ToB64Alpha[
-                byte>>n | this.write_incomplete_value_<<(8-n)];
-        this.write_incomplete_value_ = (byte&((1<<n)-1));
+                byt>>n | this.write_incomplete_value_<<(8-n)];
+        this.write_incomplete_value_ = (byt&((1<<n)-1));
         if (n == 6) {
             this.string_ += ToB64Alpha[this.write_incomplete_value_];
             this.write_extra_bits_ = 0;
@@ -1261,7 +1262,7 @@ PROTO.Message = function(name, properties) {
                 str += "}\n";
             }
             return str;
-        },
+        }
     };
     if (PROTO.DefineProperty !== undefined) {
         for (var prop in Composite.properties_) {
