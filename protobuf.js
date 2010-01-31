@@ -444,7 +444,7 @@ PROTO.Stream.prototype = {
 PROTO.ByteArrayStream = function(arr) {
     this.array_ = arr || new Array();
     this.read_pos_ = 0;
-    this.write_pos_ = arr.length;
+    this.write_pos_ = this.array_.length;
 };
 PROTO.ByteArrayStream.prototype = new PROTO.Stream();
 PROTO.ByteArrayStream.prototype.read = function(amt) {
