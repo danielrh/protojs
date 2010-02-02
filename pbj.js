@@ -11,10 +11,10 @@ function vectorGenerator(num,datatype) {
                 return [vec.x,vec.y];
             } else if (num==3&&vec.x!==undefined && vec.y!==undefined && vec.z!==undefined){
                 return [vec.x,vec.y,vec.z];
-            } else if (num==4&&vec.x!==undefined && vec.y!==undefined && vec.z!==undefined,vec.w!==undefined){
+            } else if (num==4&&vec.x!==undefined && vec.y!==undefined && vec.z!==undefined&&vec.w!==undefined){
                 return [vec.x,vec.y,vec.z,vec.w];
             } else {
-                Vector_in_invalid_format.x;
+                var errorprint=Vector_in_invalid_format.x;
                 return new Array(num);
             }
         },

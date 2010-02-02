@@ -32,6 +32,9 @@ PROTO.optional = 'optional';
 PROTO.repeated = 'repeated';
 PROTO.required = 'required';
 
+/**
+ * @constructor
+ */
 PROTO.I64 = function (msw, lsw, sign) {
     this.msw = msw;
     this.lsw = lsw;
@@ -230,9 +233,11 @@ PROTO.I64.parseLEBase256 = function (stream) {
     return new PROTO.I64(msw,lsw,1);
 };
 
-//+ Jonas Raoni Soares Silva
-//@ http://jsfromhell.com/classes/binary-parser [rev. #1]
-
+/**
+ * + Jonas Raoni Soares Silva
+ * http://jsfromhell.com/classes/binary-parser [rev. #1]
+ * @constructor
+ */ 
 PROTO.BinaryParser = function(bigEndian, allowExceptions){
     this.bigEndian = bigEndian, this.allowExceptions = allowExceptions;
 };
@@ -242,24 +247,24 @@ PROTO.BinaryParser = function(bigEndian, allowExceptions){
         exp = 0, len = 2 * bias + 1 + precisionBits + 3, bin = new Array(len),
         signal = (n = status !== 0 ? 0 : n) < 0, n = Math.abs(n), intPart = Math.floor(n), floatPart = n - intPart,
         i, lastBit, rounded, j, result;
-        for(i = len; i; bin[--i] = 0);
-        for(i = bias + 2; intPart && i; bin[--i] = intPart % 2, intPart = Math.floor(intPart / 2));
-        for(i = bias + 1; floatPart > 0 && i; (bin[++i] = ((floatPart *= 2) >= 1) - 0) && --floatPart);
-        for(i = -1; ++i < len && !bin[i];);
+        for(i = len; i; bin[--i] = 0){}
+        for(i = bias + 2; intPart && i; bin[--i] = intPart % 2, intPart = Math.floor(intPart / 2)){}
+        for(i = bias + 1; floatPart > 0 && i; (bin[++i] = ((floatPart *= 2) >= 1) - 0) && --floatPart){}
+        for(i = -1; ++i < len && !bin[i];){}
         if(bin[(lastBit = precisionBits - 1 + (i = (exp = bias + 1 - i) >= minExp && exp <= maxExp ? i + 1 : bias + 1 - (exp = minExp - 1))) + 1]){
             if(!(rounded = bin[lastBit]))
-                for(j = lastBit + 2; !rounded && j < len; rounded = bin[j++]);
-            for(j = lastBit + 1; rounded && --j >= 0; (bin[j] = !bin[j] - 0) && (rounded = 0));
+                for(j = lastBit + 2; !rounded && j < len; rounded = bin[j++]){}
+            for(j = lastBit + 1; rounded && --j >= 0; (bin[j] = !bin[j] - 0) && (rounded = 0)){}
         }
-        for(i = i - 2 < 0 ? -1 : i - 3; ++i < len && !bin[i];);
+        for(i = i - 2 < 0 ? -1 : i - 3; ++i < len && !bin[i];){}
 
         (exp = bias + 1 - i) >= minExp && exp <= maxExp ? ++i : exp < minExp &&
             (exp != bias + 1 - len && exp < minUnnormExp && this.warn("encodeFloat::float underflow"), i = bias + 1 - (exp = minExp - 1));
         (intPart || status !== 0) && (this.warn(intPart ? "encodeFloat::float overflow" : "encodeFloat::" + status),
             exp = maxExp + 1, i = bias + 2, status == -Infinity ? signal = 1 : isNaN(status) && (bin[i] = 1));
-        for(n = Math.abs(exp + bias), j = exponentBits + 1, result = ""; --j; result = (n % 2) + result, n = n >>= 1);
+        for(n = Math.abs(exp + bias), j = exponentBits + 1, result = ""; --j; result = (n % 2) + result, n = n >>= 1){}
         for(n = 0, j = 0, i = (result = (signal ? "1" : "0") + result + bin.slice(i, i + precisionBits).join("")).length, r = [];
-            i; n += (1 << j) * result.charAt(--i), j == 7 && (r[r.length] = n, n = 0), j = (j + 1) % 8);
+            i; n += (1 << j) * result.charAt(--i), j == 7 && (r[r.length] = n, n = 0), j = (j + 1) % 8){}
         
         return (this.bigEndian ? r.reverse() : r);
     };
@@ -267,8 +272,8 @@ PROTO.BinaryParser = function(bigEndian, allowExceptions){
         var max = Math.pow(2, bits), r = [];
         (number >= max || number < -(max >> 1)) && this.warn("encodeInt::overflow") && (number = 0);
         number < 0 && (number += max);
-        for(; number; r[r.length] = number % 256, number = Math.floor(number / 256));
-        for(bits = -(-bits >> 3) - r.length; bits--;);
+        for(; number; r[r.length] = number % 256, number = Math.floor(number / 256)){}
+        for(bits = -(-bits >> 3) - r.length; bits--;){}
         return (this.bigEndian ? r.reverse() : r);
     };
     PROTO.BinaryParser.prototype.decodeFloat = function(data, precisionBits, exponentBits){
@@ -281,7 +286,7 @@ PROTO.BinaryParser = function(bigEndian, allowExceptions){
         var byteValue, startBit, mask;
         do
             for(byteValue = b.buffer[ ++curByte ], startBit = precisionBits % 8 || 8, mask = 1 << startBit;
-                mask >>= 1; (byteValue & mask) && (significand += 1 / divisor), divisor *= 2);
+                mask >>= 1; (byteValue & mask) && (significand += 1 / divisor), divisor *= 2){}
         while((precisionBits -= startBit));
         return exponent == (bias << 1) + 1 ? significand ? NaN : signal ? -Infinity : +Infinity
             : (1 + signal * -2) * (exponent || significand ? !exponent ? Math.pow(2, -bias + 1) * significand
@@ -300,7 +305,7 @@ PROTO.BinaryParser = function(bigEndian, allowExceptions){
         PROTO.BinaryParser.prototype.readBits = function(start, length){
             //shl fix: Henri Torgemane ~1996 (compressed by Jonas Raoni)
             function shl(a, b){
-                for(++b; --b; a = ((a %= 0x7fffffff + 1) & 0x40000000) == 0x40000000 ? a * 2 : (a - 0x40000000) * 2 + 0x7fffffff + 1);
+                for(++b; --b; a = ((a %= 0x7fffffff + 1) & 0x40000000) == 0x40000000 ? a * 2 : (a - 0x40000000) * 2 + 0x7fffffff + 1){}
                 return a;
             }
             if(start < 0 || length <= 0)
@@ -311,12 +316,12 @@ PROTO.BinaryParser = function(bigEndian, allowExceptions){
                 sum = ((this.buffer[ curByte ] >> offsetRight) & ((1 << (diff ? 8 - offsetRight : length)) - 1))
                 + (diff && (offsetLeft = (start + length) % 8) ? (this.buffer[ lastByte++ ] & ((1 << offsetLeft) - 1))
                 << (diff-- << 3) - offsetRight : 0); diff; sum += shl(this.buffer[ lastByte++ ], (diff-- << 3) - offsetRight)
-            );
+                ){}
             return sum;
         };
         PROTO.BinaryParser.prototype.setBuffer = function(data){
             if(data){
-                for(var l, i = l = data.length, b = this.buffer = new Array(l); i; b[l - i] = data[--i]);
+                for(var l, i = l = data.length, b = this.buffer = new Array(l); i; b[l - i] = data[--i]){}
                 this.bigEndian && b.reverse();
             }
         };
@@ -414,6 +419,9 @@ PROTO.Utf8 = {
 	}
 };
 
+/**
+ * @constructor
+ */
 PROTO.Stream = function () {
     this.write_pos_ = 0;
     this.read_pos_ = 0;
@@ -445,7 +453,9 @@ PROTO.Stream.prototype = {
         return false;
     }
 };
-
+/**
+ * @constructor
+ */
 PROTO.ByteArrayStream = function(arr) {
     this.array_ = arr || new Array();
     this.read_pos_ = 0;
@@ -474,7 +484,9 @@ PROTO.ByteArrayStream.prototype.valid = function() {
 PROTO.ByteArrayStream.prototype.getArray = function() {
     return this.array_;
 }
-
+/**
+ * @constructor
+ */
 PROTO.Base64Stream = function(b64string) {
     this.string_ = b64string || '';
     this.read_pos_ = 0;
