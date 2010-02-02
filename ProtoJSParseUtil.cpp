@@ -673,6 +673,10 @@ const char *getCsType(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING em
         return "double";
     if (strcmp((char*)type->chars,"float")==0)
         return "float";
+    if (strcmp((char*)type->chars,"Double")==0)
+        return "double";
+    if (strcmp((char*)type->chars,"Float")==0)
+        return "float";
 
     if (strcmp((char*)type->chars,"bool")==0)
         return "bool";
@@ -785,6 +789,10 @@ const char *getCppType(pProtoJSParser ctx, pANTLR3_STRING type) {
     if (strcmp((char*)type->chars,"double")==0)
         return "double";
     if (strcmp((char*)type->chars,"float")==0)
+        return "float";
+    if (strcmp((char*)type->chars,"Double")==0)
+        return "double";
+    if (strcmp((char*)type->chars,"Float")==0)
         return "float";
     if (strcmp((char*)type->chars,"bool")==0)
         return "bool";

@@ -33,17 +33,17 @@ function vectorGenerator(num,datatype) {
     };
 };
 
-PBJ.vector2d=vectorGenerator(2,PROTO.double);
-PBJ.vector2f=vectorGenerator(2,PROTO.float);
+PBJ.vector2d=vectorGenerator(2,PROTO.Double);
+PBJ.vector2f=vectorGenerator(2,PROTO.Float);
 
-PBJ.vector3d=vectorGenerator(3,PROTO.double);
-PBJ.vector3f=vectorGenerator(3,PROTO.float);
+PBJ.vector3d=vectorGenerator(3,PROTO.Double);
+PBJ.vector3f=vectorGenerator(3,PROTO.Float);
 
-PBJ.vector4d=vectorGenerator(4,PROTO.double);
-PBJ.vector4f=vectorGenerator(4,PROTO.float);
+PBJ.vector4d=vectorGenerator(4,PROTO.Double);
+PBJ.vector4f=vectorGenerator(4,PROTO.Float);
 
-PBJ.normal=vectorGenerator(2,PROTO.float);
-PBJ.quaternion=vectorGenerator(3,PROTO.float);
+PBJ.normal=vectorGenerator(2,PROTO.Float);
+PBJ.quaternion=vectorGenerator(3,PROTO.Float);
 
 PBJ.duration = PROTO.sfixed64;
 PBJ.time = PROTO.fixed64;
@@ -52,9 +52,9 @@ PBJ.time = PROTO.fixed64;
 PBJ.sha256 = PROTO.bytes;
 PBJ.uuid = PROTO.bytes;
 
-PBJ.angle = PROTO.float;
+PBJ.angle = PROTO.Float;
 
-PBJ.boundingsphere3f=vectorGenerator(4,PROTO.float);
-PBJ.boundingsphere3d=vectorGenerator(4,PROTO.double);
-PBJ.boundingbox3f3f=vectorGenerator(6,PROTO.float);
-PBJ.boundingbox3d3f=vectorGenerator(6,PROTO.double);
+PBJ.boundingsphere3f=vectorGenerator(4,PROTO.Float);
+PBJ.boundingsphere3d=vectorGenerator(4,PROTO.Double);
+PBJ.boundingbox3f3f=vectorGenerator(6,PROTO.Float);
+PBJ.boundingbox3d3f=vectorGenerator(6,PROTO.Double);

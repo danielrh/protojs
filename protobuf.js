@@ -236,8 +236,7 @@ PROTO.I64.parseLEBase256 = function (stream) {
 PROTO.BinaryParser = function(bigEndian, allowExceptions){
     this.bigEndian = bigEndian, this.allowExceptions = allowExceptions;
 };
-with({p: PROTO.BinaryParser.prototype}){
-    p.encodeFloat = function(number, precisionBits, exponentBits){
+    PROTO.BinaryParser.prototype.encodeFloat = function(number, precisionBits, exponentBits){
         var bias = Math.pow(2, exponentBits - 1) - 1, minExp = -bias + 1, maxExp = bias, minUnnormExp = minExp - precisionBits,
         status = isNaN(n = parseFloat(number)) || n == -Infinity || n == +Infinity ? n : 0,
         exp = 0, len = 2 * bias + 1 + precisionBits + 3, bin = new Array(len),
@@ -264,7 +263,7 @@ with({p: PROTO.BinaryParser.prototype}){
         
         return (this.bigEndian ? r.reverse() : r);
     };
-    p.encodeInt = function(number, bits, signed){
+    PROTO.BinaryParser.prototype.encodeInt = function(number, bits, signed){
         var max = Math.pow(2, bits), r = [];
         (number >= max || number < -(max >> 1)) && this.warn("encodeInt::overflow") && (number = 0);
         number < 0 && (number += max);
@@ -272,12 +271,14 @@ with({p: PROTO.BinaryParser.prototype}){
         for(bits = -(-bits >> 3) - r.length; bits--;);
         return (this.bigEndian ? r.reverse() : r);
     };
-    p.decodeFloat = function(data, precisionBits, exponentBits){
-        var b = ((b = new this.Buffer(this.bigEndian, data)).checkBuffer(precisionBits + exponentBits + 1), b),
-            bias = Math.pow(2, exponentBits - 1) - 1, signal = b.readBits(precisionBits + exponentBits, 1),
-            exponent = b.readBits(precisionBits, exponentBits), significand = 0,
-            divisor = 2, curByte = b.buffer.length + (-precisionBits >> 3) - 1,
-            byteValue, startBit, mask;
+    PROTO.BinaryParser.prototype.decodeFloat = function(data, precisionBits, exponentBits){
+        var b = new this.Buffer(this.bigEndian, data);
+        PROTO.BinaryParser.prototype.checkBuffer.call(b, precisionBits + exponentBits + 1);
+        var bias = Math.pow(2, exponentBits - 1) - 1, signal = PROTO.BinaryParser.prototype.readBits.call(b,precisionBits + exponentBits, 1);
+        var exponent = PROTO.BinaryParser.prototype.readBits.call(b,precisionBits, exponentBits), significand = 0;
+        var divisor = 2;
+        var curByte = b.buffer.length + (-precisionBits >> 3) - 1;
+        var byteValue, startBit, mask;
         do
             for(byteValue = b.buffer[ ++curByte ], startBit = precisionBits % 8 || 8, mask = 1 << startBit;
                 mask >>= 1; (byteValue & mask) && (significand += 1 / divisor), divisor *= 2);
@@ -286,14 +287,17 @@ with({p: PROTO.BinaryParser.prototype}){
             : (1 + signal * -2) * (exponent || significand ? !exponent ? Math.pow(2, -bias + 1) * significand
             : Math.pow(2, exponent - bias) * (1 + significand) : 0);
     };
-    p.decodeInt = function(data, bits, signed){
+    PROTO.BinaryParser.prototype.decodeInt = function(data, bits, signed){
         var b = new this.Buffer(this.bigEndian, data), x = b.readBits(0, bits), max = Math.pow(2, bits);
         return signed && x >= max / 2 ? x - max : x;
     };
-    with({p: (p.Buffer = function(bigEndian, buffer){
-        this.bigEndian = bigEndian || 0, this.buffer = [], this.setBuffer(buffer);
-    }).prototype}){
-        p.readBits = function(start, length){
+    PROTO.BinaryParser.prototype.Buffer = function(bigEndian, buffer){
+        this.bigEndian = bigEndian || 0;
+        this.buffer = [];
+        PROTO.BinaryParser.prototype.setBuffer.call(this,buffer);
+    };
+
+        PROTO.BinaryParser.prototype.readBits = function(start, length){
             //shl fix: Henri Torgemane ~1996 (compressed by Jonas Raoni)
             function shl(a, b){
                 for(++b; --b; a = ((a %= 0x7fffffff + 1) & 0x40000000) == 0x40000000 ? a * 2 : (a - 0x40000000) * 2 + 0x7fffffff + 1);
@@ -301,7 +305,7 @@ with({p: PROTO.BinaryParser.prototype}){
             }
             if(start < 0 || length <= 0)
                 return 0;
-            this.checkBuffer(start + length);
+            PROTO.BinaryParser.prototype.checkBuffer.call(this, start + length);
             for(var offsetLeft, offsetRight = start % 8, curByte = this.buffer.length - (start >> 3) - 1,
                 lastByte = this.buffer.length + (-(start + length) >> 3), diff = curByte - lastByte,
                 sum = ((this.buffer[ curByte ] >> offsetRight) & ((1 << (diff ? 8 - offsetRight : length)) - 1))
@@ -310,42 +314,42 @@ with({p: PROTO.BinaryParser.prototype}){
             );
             return sum;
         };
-        p.setBuffer = function(data){
+        PROTO.BinaryParser.prototype.setBuffer = function(data){
             if(data){
                 for(var l, i = l = data.length, b = this.buffer = new Array(l); i; b[l - i] = data[--i]);
                 this.bigEndian && b.reverse();
             }
         };
-        p.hasNeededBits = function(neededBits){
+        PROTO.BinaryParser.prototype.hasNeededBits = function(neededBits){
             return this.buffer.length >= -(-neededBits >> 3);
         };
-        p.checkBuffer = function(neededBits){
-            if(!this.hasNeededBits(neededBits))
+        PROTO.BinaryParser.prototype.checkBuffer = function(neededBits){
+            if(!PROTO.BinaryParser.prototype.hasNeededBits.call(this,neededBits))
                 throw new Error("checkBuffer::missing bytes");
         };
-    }
-    p.warn = function(msg){
+    
+    PROTO.BinaryParser.prototype.warn = function(msg){
         if(this.allowExceptions)
             throw new Error(msg);
         return 1;
     };
-    p.toSmall = function(data){return this.decodeInt(data, 8, true);};
-    p.fromSmall = function(number){return this.encodeInt(number, 8, true);};
-    p.toByte = function(data){return this.decodeInt(data, 8, false);};
-    p.fromByte = function(number){return this.encodeInt(number, 8, false);};
-    p.toShort = function(data){return this.decodeInt(data, 16, true);};
-    p.fromShort = function(number){return this.encodeInt(number, 16, true);};
-    p.toWord = function(data){return this.decodeInt(data, 16, false);};
-    p.fromWord = function(number){return this.encodeInt(number, 16, false);};
-    p.toInt = function(data){return this.decodeInt(data, 32, true);};
-    p.fromInt = function(number){return this.encodeInt(number, 32, true);};
-    p.toDWord = function(data){return this.decodeInt(data, 32, false);};
-    p.fromDWord = function(number){return this.encodeInt(number, 32, false);};
-    p.toFloat = function(data){return this.decodeFloat(data, 23, 8);};
-    p.fromFloat = function(number){return this.encodeFloat(number, 23, 8);};
-    p.toDouble = function(data){return this.decodeFloat(data, 52, 11);};
-    p.fromDouble = function(number){return this.encodeFloat(number, 52, 11);};
-}
+    PROTO.BinaryParser.prototype.toSmall = function(data){return this.decodeInt(data, 8, true);};
+    PROTO.BinaryParser.prototype.fromSmall = function(number){return this.encodeInt(number, 8, true);};
+    PROTO.BinaryParser.prototype.toByte = function(data){return this.decodeInt(data, 8, false);};
+    PROTO.BinaryParser.prototype.fromByte = function(number){return this.encodeInt(number, 8, false);};
+    PROTO.BinaryParser.prototype.toShort = function(data){return this.decodeInt(data, 16, true);};
+    PROTO.BinaryParser.prototype.fromShort = function(number){return this.encodeInt(number, 16, true);};
+    PROTO.BinaryParser.prototype.toWord = function(data){return this.decodeInt(data, 16, false);};
+    PROTO.BinaryParser.prototype.fromWord = function(number){return this.encodeInt(number, 16, false);};
+    PROTO.BinaryParser.prototype.toInt = function(data){return this.decodeInt(data, 32, true);};
+    PROTO.BinaryParser.prototype.fromInt = function(number){return this.encodeInt(number, 32, true);};
+    PROTO.BinaryParser.prototype.toDWord = function(data){return this.decodeInt(data, 32, false);};
+    PROTO.BinaryParser.prototype.fromDWord = function(number){return this.encodeInt(number, 32, false);};
+    PROTO.BinaryParser.prototype.toFloat = function(data){return this.decodeFloat(data, 23, 8);};
+    PROTO.BinaryParser.prototype.fromFloat = function(number){return this.encodeFloat(number, 23, 8);};
+    PROTO.BinaryParser.prototype.toDouble = function(data){return this.decodeFloat(data, 52, 11);};
+    PROTO.BinaryParser.prototype.fromDouble = function(number){return this.encodeFloat(number, 52, 11);};
+
 PROTO.binaryParser = new PROTO.BinaryParser(false,false);
 
 
@@ -840,10 +844,10 @@ PROTO.bytes = {
         var arr = stream.read(8);
         return PROTO.binaryParser.toDouble(arr);
     };
-    PROTO.float = makeclass(convertFloatingPoint, writeFloat, readFloat);
-    PROTO.double = makeclass(convertFloatingPoint, writeDouble, readDouble);
-    PROTO.float.wiretype = PROTO.wiretypes.fixed32;
-    PROTO.double.wiretype = PROTO.wiretypes.fixed64;
+    PROTO.Float = makeclass(convertFloatingPoint, writeFloat, readFloat);
+    PROTO.Double = makeclass(convertFloatingPoint, writeDouble, readDouble);
+    PROTO.Float.wiretype = PROTO.wiretypes.fixed32;
+    PROTO.Double.wiretype = PROTO.wiretypes.fixed64;
 })();
 
 

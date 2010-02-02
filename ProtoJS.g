@@ -338,6 +338,18 @@ field_type
         $field::isNumericType=1;
         $field::fieldType=stringDup($numeric_type.text);
     }
+    | (floating_point_type -> QUALIFIEDIDENTIFIER["PROTO."] FLOAT["Float"])
+    {
+        $field::isNumericType=1;
+        $field::fieldType=stringDup($floating_point_type.text);
+        $field::fieldType->set8($field::fieldType,"Float");
+    }
+    | (double_floating_point_type -> QUALIFIEDIDENTIFIER["PROTO."] DOUBLE["Double"])
+    {
+        $field::isNumericType=1;
+        $field::fieldType=stringDup($double_floating_point_type.text);
+        $field::fieldType->set8($field::fieldType,"Double");
+    }
     | (array_type -> QUALIFIEDIDENTIFIER["PROTO."] array_type)
     {
         $field::isNumericType=0;
@@ -417,6 +429,8 @@ default_literal_value : literal_value
   }
   ;
 
+floating_point_type : FLOAT;
+double_floating_point_type:	DOUBLE;
 numeric_type:		UINT32
 	|	INT32
 	|	SINT32
@@ -427,8 +441,6 @@ numeric_type:		UINT32
 	|	SINT64
 	|	FIXED64
 	|	SFIXED64
-	|	FLOAT
-	|	DOUBLE
 	|	BOOL
 	;
 array_type:	STRING
