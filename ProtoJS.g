@@ -179,7 +179,7 @@ at_least_one_message_element
     {
         initSymbolTable(SCOPE_TOP(Symbols), $message::messageName, $message::isExtension);  
     }
-	:	message_element zero_or_more_message_elements
+	:	(extensions|reservations)* message_element zero_or_more_message_elements
     {
         if($message::isExtension) {
             defineExtensionEnd(ctx, $message::messageName);
@@ -203,8 +203,6 @@ message_element
 	|	message
 	|	enum_def
 	|	flags_def
-    |   extensions
-    |   reservations
 	;
 
 extensions
@@ -215,7 +213,7 @@ extensions
         }
         ;
 
-reservations : (RESERVE integer TO integer_inclusive ITEM_TERMINATOR -> )
+reservations : (RESERVE integer TO integer_inclusive ITEM_TERMINATOR -> WS[""])
         {
             defineReservedRange(ctx, $integer.text, $integer_inclusive.text);
         }
