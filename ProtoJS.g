@@ -132,10 +132,10 @@ message
         int isExtension;        
         pANTLR3_STRING messageName;
     }    
-    :   ( message_not_extend message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE 
+    :   ( message_not_extend message_identifier BLOCK_OPEN (at_least_one_message_element)? BLOCK_CLOSE 
            -> {ctx->pProtoJSParser_SymbolsStack_limit<=1}?
-                  IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_not_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
-                  -> message_identifier WS[" "] COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_not_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
+                  IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_not_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] at_least_one_message_element BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
+                  -> message_identifier WS[" "] COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Message"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$message_not_extend.text,$message_identifier.text)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] at_least_one_message_element BLOCK_CLOSE PAREN_CLOSE[")"] WS["\n"] )
         {
             if(!$message::isExtension) {
                 defineType( ctx, $message::messageName ,TYPE_ISMESSAGE);
@@ -143,8 +143,8 @@ message
             stringFree($message::messageName);
         }
 
-        |   ( extend_not_message message_identifier BLOCK_OPEN message_elements BLOCK_CLOSE 
-           -> IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Extend"] PAREN_OPEN["("] QUALIFIEDIDENTIFIER[qualifyType(ctx,$extend_not_message.text,$message_identifier.text)] COMMA[","] BLOCK_OPEN WS["\n"] message_elements BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"] )
+        |   ( extend_not_message message_identifier BLOCK_OPEN (at_least_one_message_element)? BLOCK_CLOSE 
+           -> IDENTIFIER[$NameSpace::packageDot->chars] message_identifier WS[" "] EQUALS["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Extend"] PAREN_OPEN["("] QUALIFIEDIDENTIFIER[qualifyType(ctx,$extend_not_message.text,$message_identifier.text)] COMMA[","] BLOCK_OPEN WS["\n"] at_least_one_message_element BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"] )
         {
             if(!$message::isExtension) {
                 defineType( ctx, $message::messageName ,TYPE_ISMESSAGE);
@@ -173,13 +173,13 @@ message_identifier
     }
     ;
 
-message_elements
+at_least_one_message_element
     scope Symbols;
     @init
     {
         initSymbolTable(SCOPE_TOP(Symbols), $message::messageName, $message::isExtension);  
     }
-	:	message_element*
+	:	message_element zero_or_more_message_elements
     {
         if($message::isExtension) {
             defineExtensionEnd(ctx, $message::messageName);
@@ -187,6 +187,15 @@ message_elements
             defineMessageEnd(ctx, $message::messageName);
         }
     }
+    ;
+zero_or_more_message_elements : (newline_message_element|extensions|reservations)*;
+
+
+newline_message_element
+	:	(field -> COMMA[","] WS["\n"] field)
+	|	(message -> COMMA[","] WS["\n"] message)
+	|	(enum_def -> COMMA[","] WS["\n"] enum_def)
+	|	(flags_def -> COMMA[","] WS["\n"] flags_def)
     ;
 
 message_element
@@ -200,7 +209,7 @@ message_element
 
 extensions
         : 
-        ( EXTENSIONS integer TO integer_inclusive ITEM_TERMINATOR -> WS["\n"] ) //WS["\t"] EXTENSIONS WS[" "] integer WS[" "] TO WS[" "] integer_inclusive ITEM_TERMINATOR WS["\n"] 
+        ( EXTENSIONS integer TO integer_inclusive ITEM_TERMINATOR -> WS[""] ) //WS["\t"] EXTENSIONS WS[" "] integer WS[" "] TO WS[" "] integer_inclusive ITEM_TERMINATOR WS["\n"] 
         {
             defineExtensionRange(ctx, $integer.text, $integer_inclusive.text);
         }
@@ -226,16 +235,18 @@ enum_def
     @init {
         $enum_def::enumList=antlr3ListNew(1);
     }
-	:	( ENUM enum_identifier BLOCK_OPEN enum_element+ BLOCK_CLOSE -> WS["\t"] enum_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Enum"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$ENUM.text,$enum_def::enumName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] (WS["\t"] enum_element)+ WS["\t"] BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","]WS["\n"] )
+	:	( ENUM enum_identifier BLOCK_OPEN at_least_one_enum_element BLOCK_CLOSE -> WS["\t"] enum_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Enum"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$ENUM.text,$enum_def::enumName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] at_least_one_enum_element WS["\t"] BLOCK_CLOSE PAREN_CLOSE[")"] )
         {
             defineEnum( ctx, $message::messageName, $enum_def::enumName, $enum_def::enumList);
             $enum_def::enumList->free($enum_def::enumList);
             stringFree($enum_def::enumName);
         }
 	;
+at_least_one_enum_element : enum_element zero_or_more_enum_elements;
+zero_or_more_enum_elements : (enum_element* -> (WS[","] WS["\n"] enum_element)*);
 
 enum_element
-	:	(IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] IDENTIFIER WS[" "] COLON[":"] integer COMMA[","] WS["\n"] )
+	:	(IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] WS["\t"] IDENTIFIER WS[" "] COLON[":"] integer )
         {
             defineEnumValue( ctx, $message::messageName, $enum_def::enumName, $enum_def::enumList, $IDENTIFIER.text, $integer.text );
         }
@@ -258,7 +269,7 @@ flags_def
         $flags_def::flagList=antlr3ListNew(1);
         
     }
-	:	( flags flag_identifier BLOCK_OPEN flag_element+ BLOCK_CLOSE -> WS["\t"] flag_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Flags"] PAREN_OPEN["("] DECIMAL_LITERAL["123456"] COMMA[","] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$flags.text,$flags_def::flagName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] (WS["\t"] flag_element)+ WS["\t"] BLOCK_CLOSE PAREN_CLOSE[")"] COMMA[","] WS["\n"] )
+	:	( flags flag_identifier BLOCK_OPEN at_least_one_flag_element BLOCK_CLOSE -> WS["\t"] flag_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Flags"] PAREN_OPEN["("] DECIMAL_LITERAL["123456"] COMMA[","] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$flags.text,$flags_def::flagName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"]  at_least_one_flag_element BLOCK_CLOSE PAREN_CLOSE[")"] )
         {
             defineFlag( ctx, $message::messageName, $flags_def::flagName, $flags_def::flagList, $flags_def::flagBits);
             $flags_def::flagList->free($flags_def::flagList);
@@ -272,9 +283,11 @@ flag_identifier
             $flags_def::flagName=stringDup($IDENTIFIER.text);
         }
 	;
+at_least_one_flag_element: flag_element zero_or_more_flag_elements;
 
+zero_or_more_flag_elements : (flag_element* -> (COMMA[","] WS["\n"] flag_element)*);
 flag_element
-	:	( IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] IDENTIFIER WS[" "] COLON[":"] WS[" "] integer COMMA[","] WS["\n"])
+	:	( IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] WS["\t"] IDENTIFIER WS[" "] COLON[":"] WS[" "] integer)
         {
             defineFlagValue( ctx, $message::messageName, $flags_def::flagName, $flags_def::flagList, $IDENTIFIER.text , $integer.text);
         }
@@ -294,7 +307,7 @@ field
     @init {$field::defaultValue=NULL; $field::isNumericType=0;$field::isRepeated=0;$field::isRequired=0;}
     :
       ( ( multiplicity (multiplicitive_type|field_type) field_name EQUALS field_offset (default_value|none) ITEM_TERMINATOR )  
-       -> WS["\t"] field_name COLON[":"] WS[" "] BLOCK_OPEN["{"] WS["\n\t\t"] IDENTIFIERCOLON["options:"] WS[" "] default_value none COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["multiplicity:"] WS[" "] QUALIFIEDIDENTIFIER["PROTO."] multiplicity COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["type:"] WS[" "] IDENTIFIER["function"] PAREN_OPEN["("]PAREN_CLOSE[")"] BLOCK_OPEN["{"] IDENTIFIER["return"] WS[" "] multiplicitive_type field_type ITEM_TERMINATOR[";"] BLOCK_CLOSE["}"] COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["id:"] WS[" "] field_offset WS["\n\t"] BLOCK_CLOSE["}"] COMMA[","] WS["\n"])
+       -> WS["\t"] field_name COLON[":"] WS[" "] BLOCK_OPEN["{"] WS["\n\t\t"] IDENTIFIERCOLON["options:"] WS[" "] default_value none COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["multiplicity:"] WS[" "] QUALIFIEDIDENTIFIER["PROTO."] multiplicity COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["type:"] WS[" "] IDENTIFIER["function"] PAREN_OPEN["("]PAREN_CLOSE[")"] BLOCK_OPEN["{"] IDENTIFIER["return"] WS[" "] multiplicitive_type field_type ITEM_TERMINATOR[";"] BLOCK_CLOSE["}"] COMMA[","] WS["\n\t\t"] IDENTIFIERCOLON["id:"] WS[" "] field_offset WS["\n\t"] BLOCK_CLOSE["}"] )
     { 
         if (($field::isRepeated||$field::isRequired)&&$field::defaultValue&&$field::defaultValue->len) {
            fprintf(stderr,"error: line \%d: default not allowed for repeated or optional elements in field \%s : \%s\n",$ITEM_TERMINATOR.line,$field::fieldName->chars,$field::defaultValue->chars);
