@@ -2,7 +2,7 @@ var PROTO = {};
 
 PROTO.DefineProperty = (function () {
         if (Object.prototype.__defineGetter__ && Object.prototype.__defineSetter__) {
-            function DefineProperty(prototype, property, getter, setter) {
+            DefineProperty = function DefProp(prototype, property, getter, setter) {
                 if (typeof getter !== 'undefined') {
                     prototype.__defineGetter__(property, getter);
                 }
@@ -11,12 +11,13 @@ PROTO.DefineProperty = (function () {
                 }
             }
             return DefineProperty;
-        } else if (Object.defineProperty) {
-            function DefineProperty(prototype, property, getter, setter) {
+        } else if (typeof(Object.defineProperty) != "undefined") {
+            DefineProperty = function DefProp(prototype, property, getter, setter) {
                 Object.defineProperty(prototype, property, {'get': getter, 'set': setter});
             }
             return DefineProperty;
         }
+	alert("hi");
         return undefined;
 })();
 
