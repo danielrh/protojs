@@ -38,6 +38,10 @@ PROTO.required = 'required';
 PROTO.I64 = function (msw, lsw, sign) {
     this.msw = msw;
     this.lsw = lsw;
+    if (typeof lsw === undefined) {
+        console.error("Too few arguments passed to I64 constructor: perhaps you meant PROTO.I64.fromNumber()");
+        throw ("Too few arguments passed to I64 constructor: perhaps you meant PROTO.I64.fromNumber()");
+    }
     if (sign === true) sign = -1;
     if (!sign) sign = 1;
     this.sign = sign;
@@ -150,7 +154,7 @@ PROTO.I64.prototype = {
         if (other.sign!=this.sign) {
             return this.unsigned_add(other);
         }
-        if (other.msw>this.msw || (other.msw==this.msw&&other.lsw>this.msw)) {
+        if (other.msw>this.msw || (other.msw==this.msw&&other.lsw>this.lsw)) {
             var retval=other.sub(this);
             retval.sign=-this.sign;
             return retval;
@@ -517,23 +521,24 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
         if (this.string_[len-1]=='=') {
             var n = 4;
             var cutoff = 2;
-            if (this.string_[len-2]=='=') {
+            if (this.string_[len-cutoff]=='=') {
                 n = 2;
                 cutoff = 3;
             }
             this.write_extra_bits_ = n;
             this.write_incomplete_value_ = FromB64AlphaMinus43[
-                this.string_.charCodeAt(len-3)-43];
+                this.string_.charCodeAt(len-cutoff)-43];
             this.write_incomplete_value_ >>= (6-n);
             this.string_ = this.string_.substring(0,len-cutoff);
         }
     }
     prototype.readByte = function readByte() {
         var next6bits;
-        while (next6bits == undefined || next6bits == -1) {
+        var n = this.read_needed_bits_;
+        while (next6bits === undefined || next6bits == -1) {
             if (this.read_pos_ >= this.string_.length) {
                 if (this.valid()) {
-                    next6bits = this.write_incomplete_value_;
+                    next6bits = this.write_incomplete_value_ << (6-n);
                     this.read_pos_++;
                     break;
                 } else {
@@ -543,7 +548,6 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
             next6bits = FromB64AlphaMinus43[
                 this.string_.charCodeAt(this.read_pos_++)-43];
         }
-        var n = this.read_needed_bits_;
         if (n == 8) {
             this.read_incomplete_value_ = next6bits;
             this.read_needed_bits_ = 2;
