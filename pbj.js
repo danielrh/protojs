@@ -1,6 +1,4 @@
-if (PBJ === undefined) {
-    var PBJ = {};
-}
+var PBJ = {};
 
 function vectorGenerator(num,datatype) {
     return {
@@ -14,7 +12,7 @@ function vectorGenerator(num,datatype) {
             } else if (num==4&&vec.x!==undefined && vec.y!==undefined && vec.z!==undefined&&vec.w!==undefined){
                 return [vec.x,vec.y,vec.z,vec.w];
             } else {
-                var errorprint=Vector_in_invalid_format.x;
+                console.error("Vector_in_invalid_format: "+vec+"; expect "+num+" elements.");
                 return new Array(num);
             }
         },
@@ -47,9 +45,7 @@ PBJ.quaternion=vectorGenerator(3,PROTO.Float);
 
 PBJ.duration = PROTO.sfixed64;
 
-var Fixed64BaseClass = function() {}; Fixed64BaseClass.prototype = PROTO.fixed64;
-
-PBJ.time = new Fixed64BaseClass;
+PBJ.time = PROTO.clone(PROTO.fixed64)
 PBJ.time.toString = function(arg) {
     var us1970Approx = arg.toNumber();
     var ms1970 = Math.floor(us1970Approx/1000);
@@ -60,19 +56,18 @@ PBJ.time.toString = function(arg) {
         (1000000+us).toString().substr(1);
 }
 
-var ByteBaseClass = function() {}; ByteBaseClass.prototype = PROTO.bytes;
-
-PBJ.sha256 = new ByteBaseClass;
+PBJ.sha256 = PROTO.clone(PROTO.bytes);
 PBJ.sha256.toString = function(arg) {
-    str = '';
+    var str = '';
     for (var i = 0; i < arg.length; i++) {
         str += (256+arg[i]).toString(16).substr(1);
     }
     return str;
 }
-PBJ.uuid = new ByteBaseClass;
+
+PBJ.uuid = PROTO.clone(PROTO.bytes);
 PBJ.uuid.toString = function(arg) {
-    str = '';
+    var str = '';
     for (var i = 0; i < arg.length; i++) {
         if (i == 4 || i == 6 || i == 8 || i == 10) {
             str += '-'

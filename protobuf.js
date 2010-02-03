@@ -1,6 +1,7 @@
 var PROTO = {};
 
 PROTO.DefineProperty = (function () {
+        var DefineProperty;
         if (Object.prototype.__defineGetter__ && Object.prototype.__defineSetter__) {
             DefineProperty = function DefProp(prototype, property, getter, setter) {
                 if (typeof getter !== 'undefined') {
@@ -20,6 +21,17 @@ PROTO.DefineProperty = (function () {
 	alert("hi");
         return undefined;
 })();
+
+/** Clones a PROTO type object. Does not work on arbitrary javascript objects.
+For example, can be used to copy the "bytes" class and make a custom toString method.
+*/
+PROTO.cloneType = function(f) {
+    var ret = {};
+    for (var x in f) {
+        ret[x] = f[x];
+    }
+    return ret;
+}
 
 PROTO.wiretypes = {
     varint: 0,
@@ -250,7 +262,7 @@ PROTO.BinaryParser = function(bigEndian, allowExceptions){
         status = isNaN(n = parseFloat(number)) || n == -Infinity || n == +Infinity ? n : 0,
         exp = 0, len = 2 * bias + 1 + precisionBits + 3, bin = new Array(len),
         signal = (n = status !== 0 ? 0 : n) < 0, n = Math.abs(n), intPart = Math.floor(n), floatPart = n - intPart,
-        i, lastBit, rounded, j, result;
+        i, lastBit, rounded, j, result, r;
         for(i = len; i; bin[--i] = 0){}
         for(i = bias + 2; intPart && i; bin[--i] = intPart % 2, intPart = Math.floor(intPart / 2)){}
         for(i = bias + 1; floatPart > 0 && i; (bin[++i] = ((floatPart *= 2) >= 1) - 0) && --floatPart){}
@@ -400,7 +412,7 @@ PROTO.Utf8 = {
 	decode : function (utftext) {
 		var string = "";
 		var i = 0;
-		var c = c1 = c2 = 0;
+		var c = 0, c1 = 0, c2 = 0, c3 = 0;
 		while ( i < utftext.length ) {
 			c = utftext[i];
 			if (c < 128) {
@@ -451,7 +463,7 @@ PROTO.Stream.prototype = {
         return null;
     },
     writeByte: function(byt) {
-        write_pos_ += 1;
+        this.write_pos_ += 1;
     },
     valid: function() {
         return false;
@@ -501,7 +513,7 @@ PROTO.Base64Stream = function(b64string) {
     this.fixString();
 }
 PROTO.Base64Stream.prototype = new PROTO.Stream();
-(function(prototype){
+(function(){
     var FromB64AlphaMinus43=[
         62,-1,62,-1,63,52,53,54,55,56,57,58,59,60,61,
         -1,-1,-1,-1,-1,-1,-1,
@@ -516,7 +528,7 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
         'a','b','c','d','e','f','g','h','i','j','k','l','m',
         'n','o','p','q','r','s','t','u','v','w','x','y','z',
         '0','1','2','3','4','5','6','7','8','9','+','/'];
-    prototype.fixString = function() {
+    PROTO.Base64Stream.prototype.fixString = function() {
         var len = this.string_.length;
         if (this.string_[len-1]=='=') {
             var n = 4;
@@ -532,7 +544,7 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
             this.string_ = this.string_.substring(0,len-cutoff);
         }
     }
-    prototype.readByte = function readByte() {
+    PROTO.Base64Stream.prototype.readByte = function readByte() {
         var next6bits;
         var n = this.read_needed_bits_;
         while (next6bits === undefined || next6bits == -1) {
@@ -560,7 +572,7 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
         return ret;
     }
 
-    prototype.writeByte = function writeByte(byt) {
+    PROTO.Base64Stream.prototype.writeByte = function writeByte(byt) {
         this.write_extra_bits_ += 2;
         var n = this.write_extra_bits_;
         this.string_ += ToB64Alpha[
@@ -576,7 +588,7 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
         }
     }
 
-    prototype.getString = function getString() {
+    PROTO.Base64Stream.prototype.getString = function getString() {
         var len = this.string_.length;
         var retstr = this.string_;
         var n = this.write_extra_bits_;
@@ -590,14 +602,15 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
         }
         return retstr;
     }
-    prototype.valid = function valid() {
+    PROTO.Base64Stream.prototype.valid = function valid() {
         return (this.read_pos_ < this.string_.length) ||
                (this.read_pos_==this.string_.length && this.write_extra_bits_);
     }
-})(PROTO.Base64Stream.prototype);
+})();
 
 PROTO.array =
     (function() {
+        /** @constructor */
         function ProtoArray(datatype, input) {
             this.datatype_ = datatype.type();
             this.array_ = new Array;
@@ -685,7 +698,7 @@ PROTO.bytes = {
     };
     function convertU32(n) { //unsigned
         if (n == NaN) {
-            throw "not a number: "+str;
+            throw "not a number: "+n;
         }
         n = Math.round(n);
         if (n < 0) {
@@ -698,7 +711,7 @@ PROTO.bytes = {
     };
     function convertS32(n) { // signed
         if (n == NaN) {
-            throw "not a number: "+str;
+            throw "not a number: "+n;
         }
         n = Math.round(n);
         if (n > 2147483647 || n < -2147483648) {
@@ -1072,6 +1085,7 @@ PROTO.serializeProperty = function(property, stream, value) {
 
 
 PROTO.Message = function(name, properties) {
+    /** @constructor */
     var Composite = function() {
         this.properties_ = Composite.properties_;
         if (!PROTO.DefineProperty) {
@@ -1183,7 +1197,7 @@ PROTO.Message = function(name, properties) {
             }
         },
         ListFields: function ListFields() {
-            ret = [];
+            var ret = [];
             for (var f in this.has_fields_) {
                 ret.push(f);
             }
@@ -1302,7 +1316,7 @@ PROTO.Enum = function (name, values, bits) {
         bits = 32;
     }
     var reverseValues = {};
-     enumobj = {};
+    var enumobj = {};
     enumobj.isType = true;
     for (var key in values) {
         reverseValues[values[key] ] = key;
