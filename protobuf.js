@@ -258,11 +258,13 @@ PROTO.BinaryParser = function(bigEndian, allowExceptions){
     this.bigEndian = bigEndian, this.allowExceptions = allowExceptions;
 };
     PROTO.BinaryParser.prototype.encodeFloat = function(number, precisionBits, exponentBits){
+        var n;
         var bias = Math.pow(2, exponentBits - 1) - 1, minExp = -bias + 1, maxExp = bias, minUnnormExp = minExp - precisionBits,
         status = isNaN(n = parseFloat(number)) || n == -Infinity || n == +Infinity ? n : 0,
         exp = 0, len = 2 * bias + 1 + precisionBits + 3, bin = new Array(len),
-        signal = (n = status !== 0 ? 0 : n) < 0, n = Math.abs(n), intPart = Math.floor(n), floatPart = n - intPart,
-        i, lastBit, rounded, j, result, r;
+        signal = (n = status !== 0 ? 0 : n) < 0;
+        n = Math.abs(n);
+        var intPart = Math.floor(n), floatPart = n - intPart, i, lastBit, rounded, j, result, r;
         for(i = len; i; bin[--i] = 0){}
         for(i = bias + 2; intPart && i; bin[--i] = intPart % 2, intPart = Math.floor(intPart / 2)){}
         for(i = bias + 1; floatPart > 0 && i; (bin[++i] = ((floatPart *= 2) >= 1) - 0) && --floatPart){}
@@ -625,7 +627,7 @@ PROTO.array =
             return val.length > 0;
         }
         ProtoArray.prototype = {};
-        ProtoArray.prototype.push = function add() {
+        ProtoArray.prototype.push = function (var_args) {
             if (arguments.length === 0) {
                 if (this.datatype_.composite) {
                     var newval = new this.datatype_;
@@ -1311,6 +1313,8 @@ PROTO.Message = function(name, properties) {
     return Composite;
 };
 
+/** Builds an enumeration type with a mapping of values.
+@param {number=} bits  Preferred size of the enum (unused at the moment). */
 PROTO.Enum = function (name, values, bits) {
     if (!bits) {
         bits = 32;

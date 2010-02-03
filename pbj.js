@@ -45,7 +45,7 @@ PBJ.quaternion=vectorGenerator(3,PROTO.Float);
 
 PBJ.duration = PROTO.sfixed64;
 
-PBJ.time = PROTO.clone(PROTO.fixed64)
+PBJ.time = PROTO.cloneType(PROTO.fixed64)
 PBJ.time.toString = function(arg) {
     var us1970Approx = arg.toNumber();
     var ms1970 = Math.floor(us1970Approx/1000);
@@ -56,7 +56,7 @@ PBJ.time.toString = function(arg) {
         (1000000+us).toString().substr(1);
 }
 
-PBJ.sha256 = PROTO.clone(PROTO.bytes);
+PBJ.sha256 = PROTO.cloneType(PROTO.bytes);
 PBJ.sha256.toString = function(arg) {
     var str = '';
     for (var i = 0; i < arg.length; i++) {
@@ -65,7 +65,7 @@ PBJ.sha256.toString = function(arg) {
     return str;
 }
 
-PBJ.uuid = PROTO.clone(PROTO.bytes);
+PBJ.uuid = PROTO.cloneType(PROTO.bytes);
 PBJ.uuid.toString = function(arg) {
     var str = '';
     for (var i = 0; i < arg.length; i++) {
