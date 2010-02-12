@@ -473,6 +473,7 @@ PROTO.Stream.prototype = {
 };
 /**
  * @constructor
+ * @param {Array=} arr  Existing byte array to read from, or append to.
  */
 PROTO.ByteArrayStream = function(arr) {
     this.array_ = arr || new Array();
@@ -504,6 +505,7 @@ PROTO.ByteArrayStream.prototype.getArray = function() {
 }
 /**
  * @constructor
+ * @param {string=} b64string  String to read from, or append to.
  */
 PROTO.Base64Stream = function(b64string) {
     this.string_ = b64string || '';
@@ -615,7 +617,6 @@ PROTO.array =
         /** @constructor */
         function ProtoArray(datatype, input) {
             this.datatype_ = datatype.type();
-            this.array_ = new Array;
             this.length = 0;
             if (input instanceof Array) {
                 for (var i=0;i<input.length;++i) {
@@ -631,9 +632,7 @@ PROTO.array =
             if (arguments.length === 0) {
                 if (this.datatype_.composite) {
                     var newval = new this.datatype_;
-                    this.array_.push(newval);
-                    this[this.length] = newval;
-                    this.length += 1;
+                    this[this.length++] = newval;
                     return newval;
                 } else {
                     throw "Called add(undefined) for a non-composite";
@@ -641,12 +640,30 @@ PROTO.array =
             } else {
                 for (var i = 0; i < arguments.length; i++) {
                     var newval = this.datatype_.Convert(arguments[i]);
-                    this.array_.push(newval);
-                    this[this.length] = newval;
+                    if (this.datatype_.FromProto) {
+                        newval = this.datatype_.FromProto(newval);
+                    }
+                    this[this.length++] = newval;
                 }
-                this.length = this.array_.length;
             }
             return arguments[0];
+        }
+        ProtoArray.prototype.set = function (index, newval) {
+            newval = this.datatype_.Convert(newval);
+            if (this.datatype_.FromProto) {
+                newval = this.datatype_.FromProto(newval);
+            }
+            if (index < this.length && index >= 0) {
+                this[index] = newval;
+            } else if (index == this.length) {
+                this[this.length++] = newval;
+            } else {
+                throw "Called ProtoArray.set with index "+index+" higher than length "+this.length;
+            }
+            return newval;
+        }
+        ProtoArray.prototype.clear = function (index, newval) {
+            this.length = 0;
         }
         return ProtoArray;
     })();
@@ -887,7 +904,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
     for (var key in properties) {
         fidToProp[properties[key].id] = key;
     }
-    var nextfid, nexttype, nextprop, nextval, nextpropname;
+    var nextfid, nexttype, nextprop, nextproptype, nextval, nextpropname;
     var incompleteTuples = {};
     while (stream.valid()) {
         nextfid = PROTO.int32.ParseFromStream(stream);
@@ -896,12 +913,13 @@ PROTO.mergeProperties = function(properties, stream, values) {
         nextfid >>>= 3;
         nextpropname = fidToProp[nextfid];
         nextprop = nextpropname && properties[nextpropname];
+        nextproptype = nextprop && nextprop.type();
         nextval = undefined;
         switch (nexttype) {
         case PROTO.wiretypes.varint:
 //        console.log("read varint field is "+nextfid);
             if (nextprop) {
-                nextval = nextprop.type().ParseFromStream(stream);
+                nextval = nextproptype.ParseFromStream(stream);
             } else {
                 PROTO.int64.ParseFromStream(stream);
             }
@@ -910,7 +928,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
 //        console.log("read fixed64 field is "+nextfid);
             if (nextprop) {
                 //console.log(nextprop.type);
-                nextval = nextprop.type().ParseFromStream(stream);
+                nextval = nextproptype.ParseFromStream(stream);
             } else {
                 PROTO.fixed64.ParseFromStream(stream);
             }
@@ -920,7 +938,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
             if (nextprop) {
                 if (nextprop.options.packed) {
                     var tup;
-                    if (nextprop.type().cardinality>1) {
+                    if (nextproptype.cardinality>1) {
                         if (incompleteTuples[nextpropname]===undefined) {
                             incompleteTuples[nextpropname]=new Array();
                         }
@@ -929,16 +947,16 @@ PROTO.mergeProperties = function(properties, stream, values) {
                     var bytearr = PROTO.bytes.ParseFromStream(stream);
                     var bas = new PROTO.ByteArrayStream(bytearr);
                     for (var j = 0; j < bytearr.length && bas.valid(); j++) {
-                        var toappend = nextprop.type().ParseFromStream(bas);
+                        var toappend = nextproptype.ParseFromStream(bas);
 
-                        if (nextprop.type().cardinality>1) {
+                        if (nextproptype.cardinality>1) {
                             tup.push(toappend);
-                            if (tup.length==nextprop.type().cardinality) {
+                            if (tup.length==nextproptype.cardinality) {
                                 if (nextprop.multiplicity == PROTO.repeated) {
                                     values[nextpropname].push(tup);
                                 } else {
                                     values[nextpropname] =
-                                        nextprop.type().Convert(tup);
+                                        nextproptype.Convert(tup);
                                 }
                                 incompleteTuples[nextpropname]=new Array();
                                 tup = incompleteTuples[nextpropname];
@@ -948,7 +966,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
                         }
                     }
                 } else {
-                    nextval = nextprop.type().ParseFromStream(stream);
+                    nextval = nextproptype.ParseFromStream(stream);
                 }
             } else {
                 PROTO.bytes.ParseFromStream(stream);
@@ -957,7 +975,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
         case PROTO.wiretypes.fixed32:
 //        console.log("read fixed32 field is "+nextfid);
             if (nextprop) {
-                nextval = nextprop.type().ParseFromStream(stream);
+                nextval = nextproptype.ParseFromStream(stream);
             } else {
                 PROTO.fixed32.ParseFromStream(stream);
             }
@@ -967,28 +985,36 @@ PROTO.mergeProperties = function(properties, stream, values) {
             break;
         }
         if (nextval !== undefined) {
-            if (values[nextpropname] === undefined && nextprop.type().cardinality>1) {
+            if (values[nextpropname] === undefined && nextproptype.cardinality>1) {
                 values[nextpropname] = {};
             }
-            if (nextprop.type().cardinality>1) {
+            if (nextproptype.cardinality>1) {
                 var tup;
                 if (incompleteTuples[nextpropname]===undefined) {
                     incompleteTuples[nextpropname]=new Array();
                     tup = incompleteTuples[nextpropname];
                 }
                 tup.push(nextval);
-                if (tup.length==nextprop.type().cardinality) {
+                if (tup.length==nextproptype.cardinality) {
                     if (nextprop.multiplicity == PROTO.repeated) {
                         values[nextpropname].push(tup);
                     } else {
-                        values[nextpropname] = nextprop.type().Convert(tup);
+                        tup = nextproptype.Convert(tup);
+                        if (!PROTO.DefineProperty && nextproptype.FromProto) {
+                            tup = nextproptype.FromProto(tup);
+                        }
+                        values[nextpropname] = tup;
                     }
                     incompleteTuples[nextpropname] = undefined;
                 }
             } else if (nextprop.multiplicity === PROTO.repeated) {
                 values[nextpropname].push(nextval);
             } else {
-                values[nextpropname] = nextprop.type().Convert(nextval);
+                nextval = nextproptype.Convert(nextval);
+                if (!PROTO.DefineProperty && nextproptype.FromProto) {
+                    nextval = nextproptype.FromProto(nextval);
+                }
+                values[nextpropname] = nextval;
             }
         }
     }
@@ -1207,10 +1233,12 @@ PROTO.Message = function(name, properties) {
         },
         GetField: function GetField(propname) {
             //console.log(propname);
-            if (this.values_[propname] === undefined) {
-                this.ClearField(propname);
+            var ret = this.values_[propname];
+            var type = this.properties_[propname].type();
+            if (type.FromProto) {
+                return type.FromProto(ret);
             }
-            return this.values_[propname];
+            return ret;
         },
         SetField: function SetField(propname, value) {
             //console.log(propname+"="+value);
@@ -1221,7 +1249,7 @@ PROTO.Message = function(name, properties) {
                 if (prop.multiplicity == PROTO.repeated) {
                     this.ClearField(propname);
                     for (var i = 0; i < value.length; i++) {
-                        this.values_[propname].append(i);
+                        this.values_[propname].push(i);
                     }
                 } else {
                     this.values_[propname] = prop.type().Convert(value);
@@ -1259,11 +1287,16 @@ PROTO.Message = function(name, properties) {
                              .replace("\n", "\\n")
                              .replace("\r","\\r");
                 str += ": \"" + myval + "\"\n";
-            } else if (type.toString) {
-                var myval = type.toString(val);
-                str += ": " + myval + "\n";
             } else {
-                str += ": " + val + "\n";
+                if (type.FromProto) {
+                    val = type.FromProto(val);
+                }
+                if (type.toString) {
+                    var myval = type.toString(val);
+                    str += ": " + myval + "\n";
+                } else {
+                    str += ": " + val + "\n";
+                }
             }
             return str;
         },
