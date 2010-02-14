@@ -1121,7 +1121,6 @@ PROTO.Message = function(name, properties) {
         } else {
             this.values_ = {};
         }
-        this.has_fields_ = {};
         this.Clear();
         this.message_type_ = name;
     };
@@ -1160,13 +1159,13 @@ PROTO.Message = function(name, properties) {
     };
     Composite.prototype = {
         computeHasFields: function computeHasFields() {
+            var has_fields = {};
             for (var key in this.properties_) {
                 if (this.HasField(key)) {
-                    this.has_fields_[key] = true;
-                } else {
-                    delete this.has_fields_[key];
+                    has_fields[key] = true;
                 }
             }
+            return has_fields;
         },
         Clear: function Clear() {
             for (var prop in this.properties_) {
@@ -1201,8 +1200,8 @@ PROTO.Message = function(name, properties) {
             PROTO.mergeProperties(this.properties_, stream, this.values_);
         },
         SerializeToStream: function Serialize(outstream) {
-            this.computeHasFields();
-            for (var key in this.has_fields_) {
+            var hasfields = this.computeHasFields();
+            for (var key in hasfields) {
                 var val = this.values_[key];
                 PROTO.serializeProperty(this.properties_[key], outstream, val);
             }
@@ -1212,7 +1211,6 @@ PROTO.Message = function(name, properties) {
         // RegisterExtension, Extensions, ClearExtension
         ClearField: function ClearField(propname) {
             var descriptor = this.properties_[propname];
-            delete this.has_fields_[propname];
             if (descriptor.multiplicity == PROTO.repeated) {
                 this.values_[propname] = new PROTO.array(descriptor);
             } else {
@@ -1226,7 +1224,8 @@ PROTO.Message = function(name, properties) {
         },
         ListFields: function ListFields() {
             var ret = [];
-            for (var f in this.has_fields_) {
+            var hasfields = this.computeHasFields();
+            for (var f in hasfields) {
                 ret.push(f);
             }
             return ret;
@@ -1235,7 +1234,7 @@ PROTO.Message = function(name, properties) {
             //console.log(propname);
             var ret = this.values_[propname];
             var type = this.properties_[propname].type();
-            if (type.FromProto) {
+            if (ret && type.FromProto) {
                 return type.FromProto(ret);
             }
             return ret;
@@ -1254,7 +1253,6 @@ PROTO.Message = function(name, properties) {
                 } else {
                     this.values_[propname] = prop.type().Convert(value);
                 }
-                this.has_fields_[propname] = true;
             }
         },
         HasField: function HasField(propname) {
