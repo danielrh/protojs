@@ -118,9 +118,9 @@ PBJ.time.FromProto = function(i64) {
         if (c >= zero && c < zero+10) {
             return (c - zero);
         } else if (c >= a && c < a+6) {
-            return (c - a);
+            return 10+(c - a);
         } else if (c >= A && c < A+6) {
-            return (c - A);
+            return 10+(c - A);
         }
         return 0;
     }

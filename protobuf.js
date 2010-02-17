@@ -1241,7 +1241,7 @@ PROTO.Message = function(name, properties) {
         },
         SetField: function SetField(propname, value) {
             //console.log(propname+"="+value);
-            if (value === undefined) {
+            if (value === undefined || value === null) {
                 this.ClearField(propname);
             } else {
                 var prop = this.properties_[propname];
