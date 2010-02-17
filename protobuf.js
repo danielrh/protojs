@@ -688,6 +688,16 @@ PROTO.bytes = {
     Convert: function(arr) {
         if (arr instanceof Array) {
             return arr;
+        } else if (arr instanceof PROTO.ByteArrayStream) {
+            return arr.getArray();
+        } else if (arr.SerializeToStream) {
+            /* This is useful for messages (e.g. RPC calls) that embed
+             * other messages inside them using the bytes type.
+             */
+            // FIXME: should we always allow this? Can this cause mistakes?
+            var tempStream = new PROTO.ByteArrayStream;
+            arr.SerializeToStream(tempStream);
+            return tempStream.getArray();
         } else {
             throw "Not a Byte Array: "+arr;
         }
