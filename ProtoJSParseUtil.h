@@ -71,14 +71,14 @@ void defineExtensionRange(pProtoJSParser ctx, pANTLR3_STRING extension_start, pA
 void defineReservedRange(pProtoJSParser ctx, pANTLR3_STRING extension_start, pANTLR3_STRING extension_end);
 void defineExtension(pProtoJSParser ctx, pANTLR3_STRING id);
 void defineExtensionEnd(pProtoJSParser ctx, pANTLR3_STRING id);
-void defineEnumValue(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING enumName, pANTLR3_LIST enumList, pANTLR3_STRING id,  pANTLR3_STRING value);
-void defineFlagValue(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING flagName, pANTLR3_LIST flagList, pANTLR3_STRING id,  pANTLR3_STRING value);
+void defineEnumValue(pProtoJSParser ctx, pANTLR3_STRING enumName, pANTLR3_LIST enumList, pANTLR3_STRING id,  pANTLR3_STRING value);
+void defineFlagValue(pProtoJSParser ctx, pANTLR3_STRING flagName, pANTLR3_LIST flagList, pANTLR3_STRING id,  pANTLR3_STRING value);
 
 int isEnum(pProtoJSParser ctx, pANTLR3_STRING identifier);
 int isFlag(pProtoJSParser ctx, pANTLR3_STRING identifier);
 
-void defineEnum(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING id, pANTLR3_LIST enumList);
-void defineFlag(pProtoJSParser ctx, pANTLR3_STRING messageName, pANTLR3_STRING id, pANTLR3_LIST flagLis, unsigned int bits);
+void defineEnum(pProtoJSParser ctx, pANTLR3_STRING id, pANTLR3_LIST enumList);
+void defineFlag(pProtoJSParser ctx, pANTLR3_STRING id, pANTLR3_LIST flagLis, unsigned int bits);
 void defineField(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING name, pANTLR3_STRING value, unsigned int field_offset, int notRepeated, int isRequired, int multiplicitive_advanced_type);
 
 SCOPE_TYPE(NameSpace) NameSpacePush(pProtoJSParser ctx);

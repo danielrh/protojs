@@ -92,7 +92,7 @@ protoroot
     @init {
         initNameSpace(ctx,SCOPE_TOP(NameSpace));
     }
-	:	pbj_header? (importrule|message)* (package (importrule|message)*)?
+	:	pbj_header? (importrule|message|enum_def|flags_def)* (package (importrule|message|enum_def|flags_def)*)?
     {
     }
 	;
@@ -233,9 +233,12 @@ enum_def
     @init {
         $enum_def::enumList=antlr3ListNew(1);
     }
-	:	( ENUM enum_identifier BLOCK_OPEN at_least_one_enum_element BLOCK_CLOSE -> WS["\t"] enum_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Enum"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$ENUM.text,$enum_def::enumName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] at_least_one_enum_element WS["\t"] BLOCK_CLOSE PAREN_CLOSE[")"] )
+	:	( ENUM enum_identifier BLOCK_OPEN at_least_one_enum_element BLOCK_CLOSE 
+           -> {ctx->pProtoJSParser_SymbolsStack_limit<=1}?
+             QUALIFIEDIDENTIFIER[qualifyType(ctx,$ENUM.text,$enum_def::enumName)] COLON["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Enum"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$ENUM.text,$enum_def::enumName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] at_least_one_enum_element BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
+              -> WS["\t"] enum_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Enum"] PAREN_OPEN["("] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$ENUM.text,$enum_def::enumName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"] at_least_one_enum_element WS["\t"] BLOCK_CLOSE PAREN_CLOSE[")"] )
         {
-            defineEnum( ctx, $message::messageName, $enum_def::enumName, $enum_def::enumList);
+            defineEnum( ctx, $enum_def::enumName, $enum_def::enumList);
             $enum_def::enumList->free($enum_def::enumList);
             stringFree($enum_def::enumName);
         }
@@ -246,7 +249,7 @@ zero_or_more_enum_elements : (enum_element* -> (WS[","] WS["\n"] enum_element)*)
 enum_element
 	:	(IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] WS["\t"] IDENTIFIER WS[" "] COLON[":"] integer )
         {
-            defineEnumValue( ctx, $message::messageName, $enum_def::enumName, $enum_def::enumList, $IDENTIFIER.text, $integer.text );
+            defineEnumValue( ctx, $enum_def::enumName, $enum_def::enumList, $IDENTIFIER.text, $integer.text );
         }
 	;
 enum_identifier
@@ -267,9 +270,12 @@ flags_def
         $flags_def::flagList=antlr3ListNew(1);
         
     }
-	:	( flags flag_identifier BLOCK_OPEN at_least_one_flag_element BLOCK_CLOSE -> WS["\t"] flag_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Flags"] PAREN_OPEN["("] DECIMAL_LITERAL["123456"] COMMA[","] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$flags.text,$flags_def::flagName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"]  at_least_one_flag_element BLOCK_CLOSE PAREN_CLOSE[")"] )
+	:	( flags flag_identifier BLOCK_OPEN at_least_one_flag_element BLOCK_CLOSE 
+           -> {ctx->pProtoJSParser_SymbolsStack_limit<=1}?
+             QUALIFIEDIDENTIFIER[qualifyType(ctx,$flags.text,$flags_def::flagName)] COLON["="] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Flags"] PAREN_OPEN["("] DECIMAL_LITERAL["123456"] COMMA[","] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$flags.text,$flags_def::flagName)] QUOTE["\""] COMMA[","] BLOCK_OPEN at_least_one_flag_element BLOCK_CLOSE PAREN_CLOSE[")"] ITEM_TERMINATOR[";"] WS["\n"]
+           -> WS["\t"] flag_identifier COLON[":"] WS[" "] QUALIFIEDIDENTIFIER["PROTO.Flags"] PAREN_OPEN["("] DECIMAL_LITERAL["123456"] COMMA[","] QUOTE["\""] QUALIFIEDIDENTIFIER[qualifyType(ctx,$flags.text,$flags_def::flagName)] QUOTE["\""] COMMA[","] BLOCK_OPEN WS["\n"]  at_least_one_flag_element BLOCK_CLOSE PAREN_CLOSE[")"] )
         {
-            defineFlag( ctx, $message::messageName, $flags_def::flagName, $flags_def::flagList, $flags_def::flagBits);
+            defineFlag( ctx, $flags_def::flagName, $flags_def::flagList, $flags_def::flagBits);
             $flags_def::flagList->free($flags_def::flagList);
             stringFree($flags_def::flagName);
         }
@@ -287,7 +293,7 @@ zero_or_more_flag_elements : (flag_element* -> (COMMA[","] WS["\n"] flag_element
 flag_element
 	:	( IDENTIFIER EQUALS integer ITEM_TERMINATOR -> WS["\t"] WS["\t"] IDENTIFIER WS[" "] COLON[":"] WS[" "] integer)
         {
-            defineFlagValue( ctx, $message::messageName, $flags_def::flagName, $flags_def::flagList, $IDENTIFIER.text , $integer.text);
+            defineFlagValue( ctx, $flags_def::flagName, $flags_def::flagList, $IDENTIFIER.text , $integer.text);
         }
 	;
 
