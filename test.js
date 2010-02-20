@@ -76,4 +76,12 @@ try {
   var decoded64msg = new Sirikata.PB.TestMessage;
   decoded64msg.ParseFromStream(new PROTO.Base64Stream(b64stream.getString()));
   output.value += "\n DECODED64: \n"+decoded64msg;
+  var genome=new Elysia.Genome.Genome();
+  genome.fathers=new Elysia.Genome.Chromosome();
+  var genome64stream = new PROTO.Base64Stream();          
+  genome.SerializeToStream(genome64stream);
+  var genomestring=genome64stream.getString();
+  if (genomestring.length==0)
+    alert("Serialized stream should not have "+genomestring.length+ " length");
+  
 };
