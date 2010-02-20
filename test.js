@@ -1,39 +1,3 @@
-
-  $A = function(obj) {
-    var a = new Array(obj.length)
-    for (var i=0; i<obj.length; i++)
-      a[i] = obj[i]
-    return a
-  }
-
-Object.forceExtend = function(dst, src) {
-  for (var i in src) {
-    try{ dst[i] = src[i] } catch(e) {}
-  }
-  return dst
-}
-// In case Object.extend isn't defined already, set it to Object.forceExtend.
-if (!Object.extend)
-  Object.extend = Object.forceExtend
-
-var ootest = function() {
-  var c = function() {
-    this.initialize.apply(this, arguments)
-  }
-  c.ancestors = $A(arguments)
-  c.prototype = {}
-  for(var i = 0; i<arguments.length; i++) {
-    var a = arguments[i]
-    if (a.prototype) {
-      Object.extend(c.prototype, a.prototype)
-    } else {
-      Object.extend(c.prototype, a)
-    }
-  }
-  Object.extend(c, c.prototype)
-  return c
-}
-
 window.onload = function() {
   var my64 = new PROTO.I64(2147483647,4294967295,-1);
   var oneHundred = new PROTO.I64(1,100,1);//4294967396
@@ -112,37 +76,4 @@ try {
   var decoded64msg = new Sirikata.PB.TestMessage;
   decoded64msg.ParseFromStream(new PROTO.Base64Stream(b64stream.getString()));
   output.value += "\n DECODED64: \n"+decoded64msg;
-  var blankmsg = new Sirikata.PB.TestMessage();
-  if (blankmsg.xxss.length!=0)
-      alert("Problem with new message having array length "+blankmsg.xxss.length);
-  else output.value += "OK";
-  var Gene = ootest(new Elysia.Genome.Gene(),{initialize:function() {
-        var newProtein=function(geneName,density){
-            var prot=new Elysia.Genome.Protein();
-            prot.density=density;
-            prot.protein_code=geneName;
-            return prot;
-
-        };
-                          
-        this.external_proteins.push(newProtein(Elysia.Genome.Effect.GROW_NEURON,1.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.BASE_BRANCHINESS,1.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.TIP_BRANCHINESS,1.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.BASE_THRESHOLD,1.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.TIP_THRESHOLD,1.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.TREE_DEPTH,5.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.RECEPTIVITY_TIME,1.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.LEARNING_RESPONSIVENESS,1.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.INHIBITION,0.0));
-        this.internal_proteins.push(newProtein(Elysia.Genome.Effect.AGGRESSIVE_DEVELOPMENT,0.0));
-}});
-    var a=new Gene();
-    if (a.internal_proteins.length!=9)
-        alert('crazy not nine but '+a.internal_proteins.length);
-    var b=new Gene();
-    if (a.internal_proteins.length!=9)
-        alert('not nine but '+a.internal_proteins.length);
-    if (b.internal_proteins.length!=9)
-        alert('not nine really '+b.internal_proteins.length);
-    else output.value+="OK";
 };
