@@ -590,10 +590,8 @@ PROTO.ByteArrayStream.prototype.getArray = function() {
         this.fixString();
     };
     PROTO.Base64Stream.prototype = new PROTO.Stream();
-    PROTO.Base64Stream.prototype.setURLSafe = function(issafe) {
-        if (issafe) {
-            this.alphabet = ToB64Alpha_URLSafe;
-        }
+    PROTO.Base64Stream.prototype.setURLSafe = function() {
+        this.alphabet = ToB64Alpha_URLSafe;
     };
     PROTO.Base64Stream.prototype.fixString = function() {
         var len = this.string_.length;
@@ -864,6 +862,10 @@ PROTO.bytes = {
         var offset=1;
         for (var i = 0; !endloop && i < 5; i++) {
             var byt = stream.readByte();
+            if (byt === undefined) {
+                console.log("read undefined byte from stream: n is "+n);
+                break;
+            }
             if (byt >= 128) {
                 byt -= 128;
             } else {
@@ -991,7 +993,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
         switch (nexttype) {
         case PROTO.wiretypes.varint:
 //        console.log("read varint field is "+nextfid);
-            if (nextprop) {
+            if (nextprop && nextproptype.wiretype == PROTO.wiretypes.varint) {
                 nextval = nextproptype.ParseFromStream(stream);
             } else {
                 PROTO.int64.ParseFromStream(stream);
@@ -999,8 +1001,7 @@ PROTO.mergeProperties = function(properties, stream, values) {
             break;
         case PROTO.wiretypes.fixed64:
 //        console.log("read fixed64 field is "+nextfid);
-            if (nextprop) {
-                //console.log(nextprop.type);
+            if (nextprop && nextproptype.wiretype == PROTO.wiretypes.fixed64) {
                 nextval = nextproptype.ParseFromStream(stream);
             } else {
                 PROTO.fixed64.ParseFromStream(stream);
@@ -1009,7 +1010,8 @@ PROTO.mergeProperties = function(properties, stream, values) {
         case PROTO.wiretypes.lengthdelim:
 //        console.log("read lengthdelim field is "+nextfid);
             if (nextprop) {
-                if (nextprop.options.packed) {
+                if (nextproptype.wiretype != PROTO.wiretypes.lengthdelim)
+                {
                     var tup;
                     if (nextproptype.cardinality>1) {
                         if (incompleteTuples[nextpropname]===undefined) {
@@ -1047,14 +1049,14 @@ PROTO.mergeProperties = function(properties, stream, values) {
             break;
         case PROTO.wiretypes.fixed32:
 //        console.log("read fixed32 field is "+nextfid);
-            if (nextprop) {
+            if (nextprop && nextproptype.wiretype == PROTO.wiretypes.fixed32) {
                 nextval = nextproptype.ParseFromStream(stream);
             } else {
                 PROTO.fixed32.ParseFromStream(stream);
             }
             break;
         default:
-        console.log("ERROR: Unknown type "+nexttype+" for "+nextfid);
+            console.log("ERROR: Unknown type "+nexttype+" for "+nextfid);
             break;
         }
         if (nextval !== undefined) {
@@ -1107,7 +1109,7 @@ PROTO.serializeTupleProperty = function(property, stream, value) {
     var wiretype = property.type().wiretype;
     var wireId = fid * 8 + wiretype;
 //    console.log("Serializing property "+fid+" as "+wiretype+" pos is "+stream.write_pos_);
-    if (property.options.packed) {
+    if (wiretype != PROTO.wiretypes.lengthdelim && property.options.packed) {
         var bytearr = new Array();
         // Don't know length beforehand.
         var bas = new PROTO.ByteArrayStream(bytearr);
@@ -1153,13 +1155,10 @@ PROTO.serializeProperty = function(property, stream, value) {
         return;
     }
     var wiretype = property.type().wiretype;
-    if (property.type().composite) {
-        wiretype = PROTO.wiretypes.lengthdelim;
-    }
     var wireId = fid * 8 + wiretype;
 //    console.log("Serializing property "+fid+" as "+wiretype+" pos is "+stream.write_pos_);
     if (property.multiplicity == PROTO.repeated) {
-        if (property.options.packed) {
+        if (wiretype != PROTO.wiretypes.lengthdelim && property.options.packed) {
             var bytearr = new Array();
             // Don't know length beforehand.
             var bas = new PROTO.ByteArrayStream(bytearr);
@@ -1208,6 +1207,7 @@ PROTO.Message = function(name, properties) {
     }
     Composite.isType = true;
     Composite.composite = true;
+    Composite.wiretype = PROTO.wiretypes.lengthdelim;
     Composite.IsInitialized = function(value) {
         return value && value.IsInitialized();
     };
