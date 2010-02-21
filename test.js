@@ -33,28 +33,29 @@ window.onload = function() {
   var arr = [];
   var stream = new PROTO.ByteArrayStream(arr);
   var b64stream = new PROTO.Base64Stream();
-  var extmsg = new Sirikata.PB.ExternalMessage();
+  var extmsg = new ProtoJSTest.PB.ExternalMessage();
   extmsg.is_true = true;
   output.value += extmsg.toString();
   extmsg.SerializeToStream(stream);
   output.value += "ExternalMessage.is_true: Serializes to ["+arr.toString()+"]\n";
-  extmsg = new Sirikata.PB.TestMessage;
+  extmsg = new ProtoJSTest.PB.TestMessage;
   arr2 = new Array;
   stream = new PROTO.ByteArrayStream(arr2);
   extmsg.v2f = [1.25, 2.5]
   extmsg.xxd = 3.14159265358979323846264;
   extmsg.xxf = .12345678
+  extmsg.xxbb.push(extmsg); // serializes extmsg into bytes.
+  extmsg.xxbb.push([1,2,3,4,5,6,7,8,255,254,253,252,251,250,249,248]);
   extmsg.xxff.push(1);
   extmsg.xxff.push(123456789123456789);
   extmsg.xxff.push(-1.345e-30);
   extmsg.xxfr = .1;
   extmsg.xxs = ("\u59cb");
-  extmsg.xxss.push("Hello world!");
+  extmsg.xxss.push("Hello world! \u3053\u3093\u306b\u3061\u306f, \u4e16\u754c\u3002\u300e\ud840\ude0c\ud840\udda4\ud840\udda9\ud840\uddab\u300f");
   extmsg.xxss.push("Brought to you by \u30b7\u30ea\u30ab\u30bf");
-  extmsg.xxbb.push([1,2,3,4,5,6,7,8,255,254,253,252,251,250,249,248]);
   extmsg.xxb = arr;
-  extmsg.f32 = Sirikata.PB.TestMessage.Flagsf32.WE | Sirikata.PB.TestMessage.Flagsf32.IMAGE;
-  extmsg.e32 = Sirikata.PB.TestMessage.Enum32.WEB1;
+  extmsg.f32 = ProtoJSTest.PB.TestMessage.Flagsf32.WE | ProtoJSTest.PB.TestMessage.Flagsf32.IMAGE;
+  extmsg.e32 = ProtoJSTest.PB.TestMessage.Enum32.WEB1;
 try {
   extmsg.submes.subduration = 0;
 } catch (e) {
@@ -70,18 +71,11 @@ try {
   extmsg.SerializeToStream(stream);
   output.value += "\n TestMessage encoded is:\n["+arr2+"]\n";
   output.value += "\n TestMessage base64'ed is:\n"+b64stream.getString()+"\n";
-  var decodedmsg = new Sirikata.PB.TestMessage;
+  var decodedmsg = new ProtoJSTest.PB.TestMessage;
   decodedmsg.ParseFromStream(new PROTO.ByteArrayStream(arr2));
   output.value += "\n DECODED: \n"+decodedmsg;
-  var decoded64msg = new Sirikata.PB.TestMessage;
+  var decoded64msg = new ProtoJSTest.PB.TestMessage;
   decoded64msg.ParseFromStream(new PROTO.Base64Stream(b64stream.getString()));
   output.value += "\n DECODED64: \n"+decoded64msg;
-  var genome=new Elysia.Genome.Genome();
-  genome.fathers=new Elysia.Genome.Chromosome();
-  var genome64stream = new PROTO.Base64Stream();          
-  genome.SerializeToStream(genome64stream);
-  var genomestring=genome64stream.getString();
-  if (genomestring.length==0)
-    alert("Serialized stream should not have "+genomestring.length+ " length");
   
 };

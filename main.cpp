@@ -151,6 +151,10 @@ int main(int argc, char *argv[])
         pANTLR3_STRING s = nodes->stringFactory->newRaw(nodes->stringFactory);
         grammarToString(nodes->tnstream,nodes->root,NULL,s);
         FILE*fp=fopen(outputFilename,"w");
+        if (!fp) {
+            perror("Unable to open output file!");
+            exit(2);
+        }
         if (s->size>1)
             fwrite(s->chars,s->size-1,1,fp);
         fclose(fp);

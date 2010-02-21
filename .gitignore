@@ -3,7 +3,7 @@
 ProtoJS.tokens
 ProtoJSLexer*
 ProtoJSParser*
-protocol
 pbj
-antlr-3.1.2
-antlr-3.1.3.jar
+antlr-3.*
+libantlr3c-*
+output
