@@ -553,21 +553,11 @@ PROTO.ByteArrayStream.prototype.valid = function() {
 };
 PROTO.ByteArrayStream.prototype.getArray = function() {
     return this.array_;
-}
+};
 /**
  * @constructor
  * @param {string=} b64string  String to read from, or append to.
  */
-PROTO.Base64Stream = function(b64string) {
-    this.string_ = b64string || '';
-    this.read_pos_ = 0;
-    this.read_incomplete_value_ = 0;
-    this.read_needed_bits_ = 8;
-    this.write_extra_bits_ = 0;
-    this.write_incomplete_value_ = 0;
-    this.fixString();
-}
-PROTO.Base64Stream.prototype = new PROTO.Stream();
 (function(){
     var FromB64AlphaMinus43=[
         62,-1,62,-1,63,52,53,54,55,56,57,58,59,60,61,
@@ -583,6 +573,28 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
         'a','b','c','d','e','f','g','h','i','j','k','l','m',
         'n','o','p','q','r','s','t','u','v','w','x','y','z',
         '0','1','2','3','4','5','6','7','8','9','+','/'];
+    var ToB64Alpha_URLSafe=[
+        'A','B','C','D','E','F','G','H','I','J','K','L','M',
+        'N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
+        'a','b','c','d','e','f','g','h','i','j','k','l','m',
+        'n','o','p','q','r','s','t','u','v','w','x','y','z',
+        '0','1','2','3','4','5','6','7','8','9','-','_'];
+    PROTO.Base64Stream = function(b64string) {
+        this.alphabet = ToB64Alpha;
+        this.string_ = b64string || '';
+        this.read_pos_ = 0;
+        this.read_incomplete_value_ = 0;
+        this.read_needed_bits_ = 8;
+        this.write_extra_bits_ = 0;
+        this.write_incomplete_value_ = 0;
+        this.fixString();
+    };
+    PROTO.Base64Stream.prototype = new PROTO.Stream();
+    PROTO.Base64Stream.prototype.setURLSafe = function(issafe) {
+        if (issafe) {
+            this.alphabet = ToB64Alpha_URLSafe;
+        }
+    };
     PROTO.Base64Stream.prototype.fixString = function() {
         var len = this.string_.length;
         if (this.string_[len-1]=='=') {
@@ -598,8 +610,8 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
             this.write_incomplete_value_ >>= (6-n);
             this.string_ = this.string_.substring(0,len-cutoff);
         }
-    }
-    PROTO.Base64Stream.prototype.readByte = function readByte() {
+    };
+    PROTO.Base64Stream.prototype.readByte = function() {
         var next6bits;
         var n = this.read_needed_bits_;
         while (next6bits === undefined || next6bits == -1) {
@@ -625,30 +637,30 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
         this.read_incomplete_value_ = next6bits&((1<<(6-n))-1);
         this.read_needed_bits_ += 2;
         return ret;
-    }
+    };
 
-    PROTO.Base64Stream.prototype.writeByte = function writeByte(byt) {
+    PROTO.Base64Stream.prototype.writeByte = function(byt) {
         this.write_extra_bits_ += 2;
         var n = this.write_extra_bits_;
-        this.string_ += ToB64Alpha[
+        this.string_ += this.alphabet[
                 byt>>n | this.write_incomplete_value_<<(8-n)];
         this.write_incomplete_value_ = (byt&((1<<n)-1));
         if (n == 6) {
-            this.string_ += ToB64Alpha[this.write_incomplete_value_];
+            this.string_ += this.alphabet[this.write_incomplete_value_];
             this.write_extra_bits_ = 0;
             this.write_incomplete_value_ = 0;
         }
         if (this.string_.length%77==76) {
             this.string_ += "\n";
         }
-    }
+    };
 
-    PROTO.Base64Stream.prototype.getString = function getString() {
+    PROTO.Base64Stream.prototype.getString = function() {
         var len = this.string_.length;
         var retstr = this.string_;
         var n = this.write_extra_bits_;
         if (n > 0) {
-            retstr += ToB64Alpha[this.write_incomplete_value_<<(6-n)];
+            retstr += this.alphabet[this.write_incomplete_value_<<(6-n)];
             if (n==2) {
                 retstr += "==";
             } else if (n==4) {
@@ -656,11 +668,11 @@ PROTO.Base64Stream.prototype = new PROTO.Stream();
             }
         }
         return retstr;
-    }
-    PROTO.Base64Stream.prototype.valid = function valid() {
+    };
+    PROTO.Base64Stream.prototype.valid = function() {
         return (this.read_pos_ < this.string_.length) ||
                (this.read_pos_==this.string_.length && this.write_extra_bits_);
-    }
+    };
 })();
 
 PROTO.array =
