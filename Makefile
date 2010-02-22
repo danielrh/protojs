@@ -8,9 +8,11 @@ OUTPUTDIR=output
 all: $(ALLOUTPUTS) pbj
 
 output/%.proto.js: protocol/%.proto pbj
+	@mkdir output || true
 	./pbj $< $@
 
 output/%.pbj.js: protocol/%.pbj pbj
+	@mkdir output || true
 	./pbj $< $@
 
 pbj : main.cpp ProtoJSLexer.o ProtoJSParser.o ProtoJSParseUtil.o
