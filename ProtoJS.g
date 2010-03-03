@@ -92,7 +92,7 @@ protoroot
     @init {
         initNameSpace(ctx,SCOPE_TOP(NameSpace));
     }
-	:	pbj_header? (importrule|message|enum_def|flags_def|option_assignment)* (package (importrule|message|enum_def|flags_def|option_assignment)*)?
+	:	pbj_header? (importrule|message|service|enum_def|flags_def|option_assignment)* (package (importrule|message|service|enum_def|flags_def|option_assignment)*)?
     {
     }
 	;
@@ -130,7 +130,15 @@ importrule
         }
 	;
 
+service: (SERVICE IDENTIFIER BLOCK_OPEN service_block* BLOCK_CLOSE -> )
+  {
+     fprintf(stderr,"warning: ignoring service \%s\n",$IDENTIFIER.text->chars);
+  };
+service_block : RPC IDENTIFIER PAREN_OPEN service_args? PAREN_CLOSE RETURNS PAREN_OPEN IDENTIFIER PAREN_CLOSE ITEM_TERMINATOR ;
 
+service_args :IDENTIFIER (COMMA service_args)? ;
+
+//NOBRACE* ( BLOCK_OPEN service_block BLOCK_CLOSE NOBRACE*)? {};
 message
     scope {
         int isExtension;        
@@ -535,6 +543,9 @@ IMPORTLITERAL :     'import';
 
 DOT :  '.';
 // Message elements
+SERVICE : 'service';
+RPC : 'rpc';
+RETURNS : 'returns';
 MESSAGE	:	'message';
 EXTEND	:	'extend';
 EXTENSIONS : 'extensions';
@@ -717,3 +728,6 @@ QUOTE : '"' ;
 COMMA : ',' ;
 
 COLON : ':' ;
+
+
+NOBRACE :  (~('{'|'}'));
