@@ -91,6 +91,7 @@ void grammarToString(pANTLR3_TREE_NODE_STREAM node_stream, pANTLR3_BASE_TREE bas
 pANTLR3_STRING ANTLR3_CDECL stringDup(pANTLR3_STRING s);
 pANTLR3_STRING ANTLR3_CDECL stringSet(pANTLR3_STRING s,pANTLR3_STRING other);
 pANTLR3_STRING defaultValuePreprocess(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING value);
+pANTLR3_STRING defaultValueIdentifierPreprocess(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING value);
 ANTLR3_BOOLEAN isTypeName(pProtoJSParser ctx, pANTLR3_UINT8 name);
 ANTLR3_BOOLEAN isPackable(pProtoJSParser ctx, pANTLR3_STRING identifier);
 #ifdef __cplusplus

@@ -92,7 +92,7 @@ protoroot
     @init {
         initNameSpace(ctx,SCOPE_TOP(NameSpace));
     }
-	:	pbj_header? (importrule|message|enum_def|flags_def)* (package (importrule|message|enum_def|flags_def)*)?
+	:	pbj_header? (importrule|message|enum_def|flags_def|option_assignment)* (package (importrule|message|enum_def|flags_def|option_assignment)*)?
     {
     }
 	;
@@ -114,9 +114,13 @@ package
             jsPackageDefine($NameSpace::jsPackageDefinition,$packagename.text);
         }
 	;
-packagename : QUALIFIEDIDENTIFIER 
+packagename : QUALIFIEDIDENTIFIER
     {
             definePackage( ctx, $QUALIFIEDIDENTIFIER.text);
+    }
+    |  IDENTIFIER
+    {
+            definePackage( ctx, $IDENTIFIER.text);
     }
     ;
 importrule
@@ -188,7 +192,7 @@ at_least_one_message_element
         }
     }
     ;
-zero_or_more_message_elements : (newline_message_element|extensions|reservations)*;
+zero_or_more_message_elements : (newline_message_element|extensions|reservations|option_assignment)*;
 
 
 newline_message_element
@@ -406,7 +410,21 @@ multiplicitive_type
 array_spec
 	:	SQBRACKET_OPEN integer? SQBRACKET_CLOSE
 	;
+option_assignment
+    :
+    (OPTION_LITERAL PAREN_OPEN? IDENTIFIER PAREN_CLOSE? EQUALS option_assignment_value ITEM_TERMINATOR -> )
+    {
+            if (strcmp($IDENTIFIER.text->chars,"java_package")!=0&&
+                strcmp($IDENTIFIER.text->chars,"java_outer_classname")!=0&&
+                strcmp($IDENTIFIER.text->chars,"java_multiple_files")!=0&&
+                strcmp($IDENTIFIER.text->chars,"optimize_for")!=0) {
+                fprintf(stderr,"Warning: Unrecognized option \%s\n",$IDENTIFIER.text->chars);
+            }
+                
+    }
+    ;
 
+option_assignment_value: (literal_value|QUALIFIEDIDENTIFIER|IDENTIFIER) {};
 default_value
 	:	
     (SQBRACKET_OPEN option_pairs SQBRACKET_CLOSE -> 
@@ -443,6 +461,11 @@ option_literal_value : literal_value {
 default_literal_value : literal_value
   {
         $field::defaultValue=defaultValuePreprocess(ctx, $field::fieldType, $literal_value.text);
+  }
+    |
+  IDENTIFIER
+  {
+        $field::defaultValue=defaultValueIdentifierPreprocess(ctx, $field::fieldType, $IDENTIFIER.text);
   }
   ;
 
@@ -626,7 +649,8 @@ STRING_LITERAL
 
 fragment
 STRING_GUTS :	( EscapeSequence | ~('\\'|'"') )* ;
-
+OPTION_LITERAL
+     : 'option';
 BOOL_LITERAL
     : 'true'
     | 'false'

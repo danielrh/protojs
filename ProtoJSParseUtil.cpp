@@ -448,7 +448,14 @@ static void closeNamespace(pProtoJSParser ctx) {
 pANTLR3_STRING defaultValuePreprocess(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING value){
     return stringDup(value);
 }
-
+pANTLR3_STRING defaultValueIdentifierPreprocess(pProtoJSParser ctx, pANTLR3_STRING type, pANTLR3_STRING value){
+    
+    pANTLR3_STRING retval=stringDup(type);
+    qualifyType(ctx,retval,type);
+    retval->append8(retval,".");
+    retval->appendS(retval,value);
+    return retval;
+}
 static std::ostream& sendTabs(pProtoJSParser ctx,int offset) {
     int num=SCOPE_SIZE(Symbols)+offset-1;
     int i;
