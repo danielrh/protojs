@@ -1,18 +1,18 @@
-ALLSOURCES=$(wildcard protocol/*.pbj) $(wildcard protocol/*.proto)
-ALLOUTPUTS=$(patsubst protocol/%,output/%.js,$(ALLSOURCES))
-ANTLRVER=3.2
-
 INPUTDIR=protocol
 OUTPUTDIR=output
 
+ALLSOURCES=$(wildcard $(INPUTDIR)/*.pbj) $(wildcard $(INPUTDIR)/*.proto)
+ALLOUTPUTS=$(patsubst $(INPUTDIR)/%,$(OUTPUTDIR)/%.js,$(ALLSOURCES))
+ANTLRVER=3.2
+
 all: $(ALLOUTPUTS) pbj
 
-output/%.proto.js: protocol/%.proto pbj
-	@mkdir output || true
+$(OUTPUTDIR)/%.proto.js: $(INPUTDIR)/%.proto pbj
+	@mkdir $(OUTPUTDIR) 2>/dev/null || true
 	./pbj $< $@
 
-output/%.pbj.js: protocol/%.pbj pbj
-	@mkdir output || true
+$(OUTPUTDIR)/%.pbj.js: $(INPUTDIR)/%.pbj pbj
+	@mkdir $(OUTPUTDIR) 2>/dev/null || true
 	./pbj $< $@
 
 pbj : main.cpp ProtoJSLexer.o ProtoJSParser.o ProtoJSParseUtil.o
