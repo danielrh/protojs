@@ -35,6 +35,8 @@ Builds the "pbj" compiler and a test file from protocol/ into output/
 If you want to use the makefile you can put your own .proto files into
 protocol/. You can also run the pbj file with "pbj input.proto output.proto"
 
+If you want to build a directory full of protocol files, run it with "make INPUTDIR=/path/to/protocol". You can optionally specify OUTPUTDIR if you don't want them to go to output.
+
 ==== Using the javascript library:
 
 The javascript library is intended to be as similar as possible to python
