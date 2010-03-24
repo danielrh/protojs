@@ -42,13 +42,11 @@ function vectorGenerator(num,datatype,magsquared) {
             if (vec instanceof Array && vec.length==num) {
                 return vec;
             } else if (vec instanceof Array && magsquared && vec.length==num+1) {
-                return vec.slice(0, num);
-            } else if (num==2&&vec.x!==undefined && vec.y!==undefined){
-                return [vec.x,vec.y];
-            } else if (num==3&&vec.x!==undefined && vec.y!==undefined && vec.z!==undefined){
-                return [vec.x,vec.y,vec.z];
-            } else if (num==4&&vec.x!==undefined && vec.y!==undefined && vec.z!==undefined&&vec.w!==undefined){
-                return [vec.x,vec.y,vec.z,vec.w];
+                var ret = vec.slice(0, num);
+                if (vec[num] < 0) {
+                    ret[0] += 3.0;
+                }
+                return ret;
             } else {
                 console.error("Vector_in_invalid_format: "+vec+"; expect "+num+" elements.");
                 return new Array(num);
@@ -71,15 +69,25 @@ function vectorGenerator(num,datatype,magsquared) {
         if (num == 2) {
             ret.FromProto = function (vec) {
                 var x = vec[0], y = vec[1];
-                vec.push(1 - Math.sqrt(x*x + y*y));
-                return vec;
-            }
+                var neg=(x>1.5||y>1.5)?-1.0:1.0;
+                if (x>1.5)
+                    x-=3.0;
+                if (y>1.5)
+                    y-=3.0;
+                return [x,y,(neg - neg*Math.sqrt(x*x + y*y))];
+            };
         } else if (num == 3) {
             ret.FromProto = function (vec) {
                 var x = vec[0], y = vec[1], z = vec[2];
-                vec.push(1 - Math.sqrt(x*x + y*y + z*z));
-                return vec;
-            }
+                var neg=(x>1.5||y>1.5||z>1.5)?-1.0:1.0;
+                if (x>1.5)
+                    x-=3.0;
+                if (y>1.5)
+                    y-=3.0;
+                if (z>1.5)
+                    z-=3.0;
+                return [x,y,z,(neg - neg*Math.sqrt(x*x + y*y + z*z))];
+            };
         }
     }
     return ret;
