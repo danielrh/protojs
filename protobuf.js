@@ -42,12 +42,12 @@ PROTO.DefineProperty = (function () {
                 if (typeof setter !== 'undefined') {
                     prototype.__defineSetter__(property, setter);
                 }
-            }
+            };
             return DefineProperty;
         } else if (typeof(Object.defineProperty) != "undefined") {
             DefineProperty = function DefProp(prototype, property, getter, setter) {
                 Object.defineProperty(prototype, property, {'get': getter, 'set': setter});
-            }
+            };
             return DefineProperty;
         }
 	alert("hi");
@@ -114,7 +114,12 @@ PROTO.I64.prototype = {
         local_lsw=this.lsw;
         var local_msw;
         if (this.sign<0) {
-            local_msw=this.msw+2147483648;
+            local_msw=2147483647-this.msw;
+            local_msw+=2147483647;
+            local_msw+=2;
+            local_lsw=2147483647-this.lsw;
+            local_lsw+=2147483647;
+            local_lsw+=2;
         }else {
             local_msw=this.msw;
         }
@@ -868,7 +873,8 @@ PROTO.bytes = {
     };
     function serializeInt32(n, stream) {
         if (n < 0) {
-            n += 4294967296;
+            serializeInt64(PROTO.I64.fromNumber(n),stream);
+            return;
         }
         // Loop once regardless of whether n is 0.
         for (var i = 0; i==0 || (n && i < 5); i++) {
@@ -898,20 +904,20 @@ PROTO.bytes = {
                 console.log("read undefined byte from stream: n is "+n);
                 break;
             }
-            if (byt >= 128) {
-                byt -= 128;
-            } else {
+            if (byt < 128) {
                 endloop = true;
             }
-            n += offset*byt;
+            n += offset*(byt&(i==4?15:127));
             offset *= 128;
         }
         return n;
     };
     function parseInt32(stream) {
-        var n = parseUInt32(stream);
+        var n = parseUInt32(stream);//snag the first 4 bytes
         if (n > 2147483647) {
-            n -= 4294967296;
+            n -= 2147483647;
+            n -= 2147483647;
+            n -= 2;
         }
         return n;
     };
