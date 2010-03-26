@@ -669,7 +669,7 @@ BOOL_LITERAL
 
 HEX_LITERAL : '0' ('x'|'X') HexDigit+ ;
 
-DECIMAL_LITERAL : ('0' | '1'..'9' '0'..'9'*) ;
+DECIMAL_LITERAL : ('0' | '-'? '1'..'9' '0'..'9'*) ;
 
 OCTAL_LITERAL : '0' ('0'..'7')+ ;
 
