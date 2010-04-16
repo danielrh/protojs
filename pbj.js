@@ -74,7 +74,7 @@ function vectorGenerator(num,datatype,magsquared) {
                     x-=3.0;
                 if (y>1.5)
                     y-=3.0;
-                return [x,y,neg*Math.sqrt(1-x*x+y*y)];
+                return [x,y,neg*Math.sqrt(1-x*x-y*y)];
             };
         } else if (num == 3) {
             ret.FromProto = function (vec) {
@@ -86,7 +86,7 @@ function vectorGenerator(num,datatype,magsquared) {
                     y-=3.0;
                 if (z>1.5)
                     z-=3.0;
-                return [x,y,z,neg*Math.sqrt(1-x*x+y*y+z*z)];
+                return [x,y,z,neg*Math.sqrt(1-x*x-y*y-z*z)];
             };
         }
     }
