@@ -93,6 +93,13 @@ function vectorGenerator(num,datatype,magsquared) {
     return ret;
 };
 
+PBJ.uint8 = PROTO.uint32
+PBJ.uint16 = PROTO.uint32
+PBJ.int8 = PROTO.int32
+PBJ.int16 = PROTO.int32
+PBJ.sint8 = PROTO.sint32
+PBJ.sint16 = PROTO.sint32
+
 PBJ.vector2d=vectorGenerator(2,PROTO.Double);
 PBJ.vector2f=vectorGenerator(2,PROTO.Float);
 

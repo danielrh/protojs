@@ -109,6 +109,12 @@ PROTO.I64.prototype = {
         var sign = (this.sign==-1 ? "-" : "");
         return sign+"0x"+zeros(8-firstHalf.length)+firstHalf+zeros(8-secondHalf.length)+secondHalf;
     },
+    equals: function(other) {
+        return this.sign==other.sign&&this.msw==other.msw&&this.lsw==other.lsw;
+    },
+    hash: function() {
+        return (i64.sign!=1)+":"+i64.msw+"_"+i64.lsw;
+    },
     convertToUnsigned: function() {
         var local_lsw;
         local_lsw=this.lsw;
@@ -1316,6 +1322,18 @@ PROTO.Message = function(name, properties) {
                 var val = this.values_[key];
                 PROTO.serializeProperty(this.properties_[key], outstream, val);
             }
+        },
+        SerializeToArray: function (opt_array) {
+            var stream = new PROTO.ByteArrayStream(opt_array);
+            this.SerializeToStream(stream);
+            return stream.getArray();
+        },
+        MergeFromArray: function (array) {
+            this.MergeFromStream(new PROTO.ByteArrayStream(array));
+        },
+        ParseFromArray: function (array) {
+            this.Clear();
+            this.MergeFromArray(array);
         },
         // Not implemented:
         // CopyFrom, MergeFrom, SerializePartialToX,
