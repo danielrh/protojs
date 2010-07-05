@@ -34,8 +34,14 @@ var PROTO = {};
 
 PROTO.DefineProperty = (function () {
         var DefineProperty;
-        if (Object.prototype.__defineGetter__ && Object.prototype.__defineSetter__) {
-            DefineProperty = function DefProp(prototype, property, getter, setter) {
+        if (typeof(Object.defineProperty) != "undefined") {
+            DefineProperty = function(prototype, property, getter, setter) {
+                Object.defineProperty(prototype, property, {
+                    'get': getter, 'set': setter,
+                    'enumerable': true, 'configurable': false});
+            };
+        } else if (Object.prototype.__defineGetter__ && Object.prototype.__defineSetter__) {
+            DefineProperty = function(prototype, property, getter, setter) {
                 if (typeof getter !== 'undefined') {
                     prototype.__defineGetter__(property, getter);
                 }
@@ -43,15 +49,29 @@ PROTO.DefineProperty = (function () {
                     prototype.__defineSetter__(property, setter);
                 }
             };
-            return DefineProperty;
-        } else if (typeof(Object.defineProperty) != "undefined") {
-            DefineProperty = function DefProp(prototype, property, getter, setter) {
-                Object.defineProperty(prototype, property, {'get': getter, 'set': setter});
-            };
-            return DefineProperty;
         }
-	alert("hi");
-        return undefined;
+        // IE8's Object.defineProperty method might be broken.
+        // Make sure DefineProperty works before returning it.
+        if (DefineProperty) {
+            try {
+                var TestClass = function(){};
+                DefineProperty(TestClass.prototype, "x",
+                               function(){return this.xval*2;},
+                               function(newx){this.xval=newx;});
+                var testinst = new TestClass;
+                testinst.x = 5;
+                if (testinst.x != 10) {
+                    console.log("DefineProperty test gave the wrong result "+testinst.x);
+                    DefineProperty = undefined;
+                }
+            } catch (e) {
+                if (typeof(console)!="undefined" && console.log) {
+                    console.log("DefineProperty should be supported, but threw "+e,e);
+                }
+                DefineProperty = undefined;
+            }
+        }
+        return DefineProperty;
 })();
 
 /** Clones a PROTO type object. Does not work on arbitrary javascript objects.
