@@ -133,7 +133,7 @@ PROTO.I64.prototype = {
         return this.sign==other.sign&&this.msw==other.msw&&this.lsw==other.lsw;
     },
     hash: function() {
-        return (i64.sign!=1)+":"+i64.msw+"_"+i64.lsw;
+        return (this.sign*this.msw)+"_"+this.lsw;
     },
     convertToUnsigned: function() {
         var local_lsw;
@@ -311,6 +311,9 @@ PROTO.I64.parseLEBase256 = function (stream) {
     }
     return new PROTO.I64(msw,lsw,1);
 };
+
+PROTO.I64.ONE = new PROTO.I64.fromNumber(1);
+PROTO.I64.ZERO = new PROTO.I64.fromNumber(0);
 
 /**
  * + Jonas Raoni Soares Silva
