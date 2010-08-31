@@ -277,15 +277,7 @@ void defineImport(pProtoJSParser ctx, pANTLR3_STRING filename) {
     s->appendS(s,filename);
     SCOPE_TOP(NameSpace)->imports->add(SCOPE_TOP(NameSpace)->imports,s,&stringFree);
     if (CPPFP) {
-        char lst='.';
-        if (s->len>6) {
-            lst=s->chars[s->len-6];
-            assert(lst=='.');
-            s->chars[s->len-6]='\0';
-        }
-        CPPFP<<"#include \""<<s->chars<<".pbj.hpp\"\n";
-        if (s->len>6)
-            s->chars[s->len-6]=lst;
+        CPPFP<<"#include \""<<s->chars<<".hpp\"\n";
     }
 }
 
